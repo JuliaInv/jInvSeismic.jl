@@ -1,0 +1,21 @@
+language: julia
+
+os:
+  - osx
+  - linux
+
+julia:
+  - 0.7
+  
+notifications:
+  email: false
+ 
+before_install:
+   #- julia -e 'using Pkg; Pkg.add("https://github.com/JuliaInv/jInv.jl","jInv"); Pkg.build("jInv");'
+   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+
+script:
+  - julia -p 4 --check-bounds=yes -e 'using Pkg; Pkg.build(); Pkg.test("BasicFWI";coverage=true)'
+
+after_success:
+  - julia -e 'using Pkg; cd(Pkg.dir("jInvSeismic")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'

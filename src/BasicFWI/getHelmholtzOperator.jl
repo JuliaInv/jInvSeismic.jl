@@ -32,6 +32,7 @@ function getABL(Msh::RegularMesh,NeumannAtFirstDim::Bool,ABLpad::Array{Int64},AB
   ntup = tuple(n...);
   
   if Msh.dim==2
+    # This version is compatible with the 3D one:
 	# x1 = linspace(-1,1,n[1]);
 	# x2 = linspace(0,1,n[2]);
 	# X1,X2 = ndgrid(x1,x2);

@@ -59,8 +59,8 @@ if size(Data,2) == 4
 		Wd[ircv,isrc] = Data[k,4] ;#+ 1im*Data[k,5];
 	end
 elseif size(Data,2) == 6
-	D = zeros(Complex128,numRcv,numSrc);
-	Wd = zeros(Complex128,numRcv,numSrc);
+	D = zeros(ComplexF64,numRcv,numSrc);
+	Wd = zeros(ComplexF64,numRcv,numSrc);
 	SrcIdxs = SrcNodeLoc[:,1];
 	RcvIdxs = RcvNodeLoc[:,1];
 	for k=1:size(Data,1)
@@ -116,7 +116,7 @@ writedlm(filename,SrcRcvTable);
 end
 
 
-function writeDataFile(filename,D::Union{Array{Float64,2},Array{Complex128,2}},Wd::Union{Array{Float64,2},Array{Complex128,2}},SrcNodeLoc::Array{Int64},RcvNodeLoc::Array{Int64})
+function writeDataFile(filename,D::Union{Array{Float64,2},Array{ComplexF64,2}},Wd::Union{Array{Float64,2},Array{ComplexF64,2}},SrcNodeLoc::Array{Int64},RcvNodeLoc::Array{Int64})
 srcIDs = SrcNodeLoc[:,1];
 rcvIDs = RcvNodeLoc[:,1];
 
@@ -157,7 +157,7 @@ writedlm(filename,Data);
 return;
 end
 
-function limitDataToOffset(Wd::Union{Array{Float64,2},Array{Complex128,2}},SrcNodeLoc::Array{Int64},RcvNodeLoc::Array{Int64},offsetInNodes::Int64)
+function limitDataToOffset(Wd::Union{Array{Float64,2},Array{ComplexF64,2}},SrcNodeLoc::Array{Int64},RcvNodeLoc::Array{Int64},offsetInNodes::Int64)
 for j = 1:size(Wd,2)
 	srcLoc = SrcNodeLoc[j,2:end];
 	for i = 1:size(Wd,1)

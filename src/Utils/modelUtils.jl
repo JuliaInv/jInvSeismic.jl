@@ -37,19 +37,19 @@ return s;
 end
 
 function velocityToSlowSquared(v::Array)
-s = (1./(v+1e-16)).^2
+s = (1.0./(v+1e-16)).^2
 ds = spdiagm((-2.0)./(v[:].^3));
 return s,ds
 end
 
 function slowSquaredToVelocity(s::Array)
-m = 1./sqrt.(s+1e-16);
-dm = spdiagm(-0.5*(1./(s[:].^(3/2))));
+m = 1.0/sqrt.(s+1e-16);
+dm = spdiagm(-0.5*(1.0/(s[:].^(3.0/2.0))));
 return m,dm
 end
 
 function velocityToSlow(v::Array)
-s = (1./(v+1e-16))
+s = (1.0/(v+1e-16))
 ds = spdiagm((-1.0)./(v[:].^2));
 return s,ds
 end

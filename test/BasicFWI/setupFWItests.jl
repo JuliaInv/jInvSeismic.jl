@@ -9,10 +9,6 @@ using DelimitedFiles
 # end
 
 
-
-
-
-
 println("IM here")
 #@everywhere begin
 	using jInvSeismic.BasicFWI
@@ -20,12 +16,6 @@ println("IM here")
 	using jInv.Utils
 	using jInv.ForwardShare
 #end
-
-
-
-
-
-
 
 
 
@@ -51,18 +41,6 @@ m = 1.0./(m.^2); # convert to slowness squared
 padx = 20; padz = 20
 a    = 2.0;
 xc = getCellCenteredGrid(Mr)
-# gammaxL = a*(xc[:,1] .- xc[padx,1]).^2;
-# gammaxL[padx+1:end,:] .= 0
-# gammaxR = a*(xc[:,1] .- xc[end-padx+1,1]).^2
-# gammaxR[1:end-padx,:] .= 0
-
-# gammax = gammaxL + gammaxR
-
-# gammaz = a*(xc[:,2] .- xc[end-padz+1,2]).^2
-# gammaz[:,1:end-padz] .= 0
-
-# gamma = gammax + gammaz
-
 gamma = getABL(Mr,true,[padx;padz],a);
 
 # parameters for the Helmholtz (units in km)

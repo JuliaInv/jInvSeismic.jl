@@ -1,7 +1,7 @@
 
 export arrangeRemoteCallDataIntoLocalData,getSourcesIndicesOfKthWorker
 
-function arrangeRemoteCallDataIntoLocalData(DremoteCall::Union{Array{Array{Float64,2},1},Array{Array{Complex128,2},1}})
+function arrangeRemoteCallDataIntoLocalData(DremoteCall::Union{Array{Array{Float64,2},1},Array{Array{ComplexF64,2},1}})
 N = length(DremoteCall);
 l = 0;
 for k=1:N
