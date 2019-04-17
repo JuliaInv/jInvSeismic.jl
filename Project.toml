@@ -1,0 +1,14 @@
+name = "jInvSeismic"
+uuid = "9a705e90-610f-11e9-2434-3b0eb5f83adc"
+authors = ["Eran Treister <erantreister@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+KrylovMethods = "9a2cd570-f05c-5dc1-9209-93ad6f5727f7"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+ParSpMatVec = "46e045f0-2ea7-11e9-2e29-a9e59055879a"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+jInv = "dfd06120-4570-11e9-1976-1f1543b65420"

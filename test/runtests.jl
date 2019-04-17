@@ -1,0 +1,1 @@
+include("BasicFWI/runtests.jl")
