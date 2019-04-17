@@ -5,8 +5,13 @@
 
 # jInvSeismic.jl - soon to be a collection of seismic inversion related packages 
 
-# jInvSeismic.BasicFWI - a lightweight basic Full Waveform Inversion in Julia.
- 
+# Overview
+
+jInvSeismic consists of submodules:
+
+1. `jInvSeismic.BasicFWI` - a lightweight basic Full Waveform Inversion in Julia.
+2. `Utils` - utility functions.
+
 
 # Requirements
 
