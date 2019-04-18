@@ -2,6 +2,8 @@ using jInvSeismic.BasicFWI
 using jInv.Mesh
 using jInv.Utils
 using jInv.ForwardShare
+
+
 using DelimitedFiles
 
 # if nworkers()==1
@@ -26,7 +28,7 @@ Mr = getRegularMesh(domain,[nx,nz])
 
 # the slowness model
 m = 3.0*ones(nx,nz);
-m[20:70,10:32] .= 5.0; # velocity...
+m[30:80,20:40] .= 5.0; # velocity...
 m = 1.0./(m.^2); # convert to slowness squared
 
 
@@ -46,11 +48,11 @@ gamma = getABL(Mr,true,[padx;padz],a);
 # parameters for the Helmholtz (units in km)
 h = Mr.h;
 n = [nx; nz;]
-omega = 2*pi*[1.0;1.2;1.4;1.5;2.0;3.0]
+omega = 2*pi*[0.5;1.0;2.0;3.0]
 nfreq = length(omega)
 
 # generate sources
-q = zeros(tuple(n.+1...)); q[padx+1:2:end-padx-1,1] .= 1e4
+q = zeros(tuple(n.+1...)); q[padx+1:4:end-padx-1,1] .= 1e4
 Q = sdiag(vec(q))
 Q = Q[:,(LinearIndices(sum(Q,dims=2) .!= 0))[findall(sum(Q,dims=2) .!= 0)]]
 nsrc = size(Q,2)
