@@ -1,13 +1,23 @@
-include("setupInversionTest.jl");
+include("../test/BasicFWI/setupFWItests.jl");
 
 @everywhere begin
 using jInv.InverseSolve
 using jInv.LinearSolvers
 end
 
-using Test
+using jInvVis
+using PyPlot
 
-println("Running inversion test");
+close("all")
+tstart = time_ns();
+
+function plotInputData()
+	figure(20)
+	imshow(m');colorbar();
+
+	figure(21);
+	imshow(reshape(gamma,(nx,nz))');
+end
 
 function solveForwardProblem(pForp::Array{RemoteChannel}, omega::Vector, nrec::Int64,
 	nsrc::Int64, nfreq::Int64)
@@ -65,35 +75,42 @@ function solveInverseProblem(Dobs::Array, Wd::Array, nfreq::Int64, nx::Int64, nz
 	HesPrec 			= getExactSolveRegularizationPreconditioner();
 	regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
 
+
 	pInv = getInverseParam(Mr,identityMod,regfun,alpha,mref[:],boundsLow,boundsHigh,
 	                         maxStep=maxStep,pcgMaxIter=cgit,pcgTol=pcgTol,
 							 minUpdate=1e-3, maxIter = maxit,HesPrec=HesPrec);
 
+
 	plotting = true;
-	function dummyPlot(mc,Dc,iter,pInv,PMis)
-		#Do nothing
+	function plotIntermediateResults(mc,Dc,iter,pInv,PMis)
+		# Models are usually shown in velocity.
+		fullMc = reshape(Iact*pInv.modelfun(mc)[1] + mback,tuple((pInv.MInv.n)...));
+		if plotting
+			close(888);
+			figure(888);
+			imshow(fullMc');colorbar();
+			pause(1.0)
+		end
 	end
 
 	# Run one sweep of a frequency continuation procedure.
-	mc, Dc, = freqCont(copy(mref[:]), pInv, pMis, nfreq, 2, dummyPlot,1);
-	return mc, Dc, pInv, Iact, mback;
+	mc, = freqCont(copy(mref[:]), pInv, pMis, nfreq, 4,plotIntermediateResults,1);
+	return mc, pInv, Iact, mback;
 end
 
+plotInputData();
 Dobs, Wd = solveForwardProblem(pForp, omega, nrec, nsrc, nfreq);
-mc, Dc, pInv, Iact, mback = solveInverseProblem(Dobs, Wd, nfreq, nx, nz, Mr);
+mc, pInv, Iact, mback = solveInverseProblem(Dobs, Wd, nfreq, nx, nz, Mr);
+
+
 
 fullMc = reshape(Iact*pInv.modelfun(mc)[1] + mback,tuple((pInv.MInv.n)...));
 println("Model error:");
 println(norm(fullMc.-m));
-@test norm(fullMc.-m) < 1.4
+tend = time_ns();
+println("Runtime:");
+println((tend - tstart)/1.0e9);
 
-for k=1:length(Dc)
-	wait(Dc[k]);
-end
-Dinv = Array{Array}(undef, nfreq);
-for k=1:length(Dc)
-	Dinv[k] = fetch(Dc[k]);
-end
-println("Data error:");
-println(norm(Dobs.-Dinv));
-@test norm(Dobs.-Dinv) < 5.4
+#Plot residuals
+figure(22);
+imshow((abs.(m.-fullMc))'); colorbar();
