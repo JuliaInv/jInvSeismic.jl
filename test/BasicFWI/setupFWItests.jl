@@ -1,8 +1,9 @@
 using jInvSeismic.BasicFWI
+using jInvSeismic.Utils
 using jInv.Mesh
 using jInv.Utils
 using jInv.ForwardShare
-
+using Distributed
 
 using DelimitedFiles
 

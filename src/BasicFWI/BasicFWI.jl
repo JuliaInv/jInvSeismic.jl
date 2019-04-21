@@ -5,6 +5,7 @@ using Distributed
 using SparseArrays
 using LinearAlgebra
 
+
 export FWIparam
 import jInv.ForwardShare.ForwardProbType
 """
@@ -80,5 +81,6 @@ include("getSensTMatVec.jl")
 include("getHelmholtzOperator.jl")
 include("getMassMatrix.jl")
 include("freqCont.jl")
+include("solvers.jl")
 
 end
