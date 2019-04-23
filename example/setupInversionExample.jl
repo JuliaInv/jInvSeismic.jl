@@ -8,9 +8,9 @@ using Distributed
 using DelimitedFiles
 
 if nworkers() == 1
-	addprocs(4);
-elseif nworkers() < 4
-	addprocs(4 - nworkers());
+	addprocs(6);
+elseif nworkers() < 6
+	addprocs(6 - nworkers());
 end
 
 
@@ -25,7 +25,7 @@ end
 
 
 # setup model and attenuation function
-nx = 164; nz = 80
+nx = 256; nz = 128
 domain = [0.0,10.0,0.0,4.0]
 Mr = getRegularMesh(domain,[nx,nz])
 
@@ -51,7 +51,7 @@ gamma = getABL(Mr,true,[padx;padz],a);
 # parameters for the Helmholtz (units in km)
 h = Mr.h;
 n = [nx; nz;]
-omega = 2*pi*[0.5;1.0;2.0;3.0]
+omega = 2*pi*[0.5;1.0;2.0;3.0;4.0;5.0;6.0]
 nfreq = length(omega)
 
 # generate sources

@@ -7,10 +7,8 @@ using Distributed
 
 using DelimitedFiles
 
-if nworkers() == 1
-	addprocs(4);
-elseif nworkers() < 4
-	addprocs(4 - nworkers());
+if nworkers()==1
+	addprocs(1)
 end
 
 
@@ -34,14 +32,6 @@ m = 3.0*ones(nx,nz);
 m[30:80,20:40] .= 5.0; # velocity...
 m = 1.0./(m.^2); # convert to slowness squared
 
-
-# m = readdlm("SEGmodel2Dsalt.dat");
-# m = m*1e-3;
-# m = m';
-# m = 1.0./m^2
-
-
-
 # attenuation for BC
 padx = 20; padz = 20
 a    = 2.0;
@@ -51,17 +41,17 @@ gamma = getABL(Mr,true,[padx;padz],a);
 # parameters for the Helmholtz (units in km)
 h = Mr.h;
 n = [nx; nz;]
-omega = 2*pi*[0.5;1.0;2.0;3.0]
+omega = 2*pi*[0.5;2.0]
 nfreq = length(omega)
 
 # generate sources
-q = zeros(tuple(n.+1...)); q[padx+1:4:end-padx-1,1] .= 1e4
+q = zeros(tuple(n.+1...)); q[padx+1:32:end-padx-1,1] .= 1e4
 Q = sdiag(vec(q))
 Q = Q[:,(LinearIndices(sum(Q,dims=2) .!= 0))[findall(sum(Q,dims=2) .!= 0)]]
 nsrc = size(Q,2)
 
 # receivers
-p = zeros(tuple(n.+1...)); p[padx+1:end-padx-1,1] .= 1
+p = zeros(tuple(n.+1...)); p[padx+1:8:end-padx-1,1] .= 1
 P = sdiag(vec(p))
 P = P[:,(LinearIndices(sum(P,dims=2) .!= 0))[findall(sum(P,dims=2) .!= 0)]]
 nrec = size(P,2)
