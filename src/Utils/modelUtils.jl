@@ -1,6 +1,10 @@
 export expandModelNearest, getSimilarLinearModel, addAbsorbingLayer
+export addAbsorbingLayer
 export velocityToSlowSquared,slowSquaredToVelocity,velocityToSlow,slowToSlowSquared,slowSquaredToSlow
 export slowToLeveledSlowSquared,getModelInvNewton
+using Statistics
+using jInv.Mesh
+
 
 function slowToLeveledSlowSquared(s,mid::Float64 = 0.32,a::Float64 = 0.0,b::Float64 = 0.05)
 d = (b-a)./2.0;
@@ -96,17 +100,18 @@ end
 
 function getSimilarLinearModel(m::Array{Float64},mtop::Float64=0.0,mbottom::Float64=0.0)
 # m here is assumed to be a velocity model.
+
 if length(size(m))==2
 	(nx,nz) = size(m);
-	m_vel = copy(m) ; 
+	m_vel = copy(m) ;
 	if mtop==0.0
 		mtop = m_vel[1:10,5:6];
-		mtop = mean(mtop[:]);
+		mtop = Statistics.mean(mtop[:]);
 		println("Mref top = ",mtop);
 	end
 	if mbottom==0.0
 		mbottom = m_vel[1:10,end-10:end];
-		mbottom = mean(mbottom[:]);
+		mbottom = Statistics.mean(mbottom[:]);
 		println("Mref bottom = ",mbottom);
 	end
 	m_vel = ones(nx)*range(mtop,stop=mbottom,length=nz)';
@@ -116,11 +121,11 @@ elseif length(size(m))==3
 	m_vel = copy(m);
 	if mtop==0.0
 		mtop = m_vel[1:10,:,5:15];
-		mtop = mean(mtop[:]);
+		mtop = Statistics.mean(mtop[:]);
 	end
 	if mbottom==0.0
 		mbottom = m_vel[1:10,:,end-10:end];
-		mbottom = mean(mbottom[:]);	
+		mbottom = Statistics.mean(mbottom[:]);
 	end
 	lin = range(mtop,stop=mbottom,length=nz);
 	m_vel = copy(m);
@@ -161,10 +166,10 @@ if length(size(m))==2
 elseif length(size(m))==3
 	mnew = zeros(size(m,1)+2*pad,size(m,2)+2*pad,size(m,3)+pad);
 	mnew[pad+1:end-pad,pad+1:end-pad,1:end-pad] = m;
-	
+
 	extendedPlane1 = addAbsorbingLayer2D(reshape(m[1,:,:],size(m,2),size(m,3)),pad);
 	extendedPlaneEnd = addAbsorbingLayer2D(reshape(m[end,:,:],size(m,2),size(m,3)),pad);
-	
+
 	for k=1:pad
 		mnew[k,:,:] = extendedPlane1;
 		mnew[end-k+1,:,:] = extendedPlaneEnd;

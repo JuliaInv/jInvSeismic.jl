@@ -2,13 +2,15 @@ export getData
 
 import jInv.ForwardShare.getData
 function getData(m,pFor::BasicFWIparam,doClear::Bool=false)
-
+    println("starting GetData5");
+    tstart = time_ns();
     # extract pointers
     Mesh  = pFor.Mesh
     omega = pFor.omega
     gamma = pFor.gamma
     Q     = pFor.Sources
     P     = pFor.Receivers
+    TEmat = pFor.TEmat
 
     nrec  = size(P,2)
     nsrc  = size(Q,2)
@@ -31,6 +33,14 @@ function getData(m,pFor::BasicFWIparam,doClear::Bool=false)
     end
     pFor.Ainv   = LU
     pFor.Fields = U
-
-    return D,pFor
+    tend = time_ns();
+    println("Runtime of getData:");
+    println((tend - tstart)/1.0e9);
+    Dres = zeros(nrec, size(TEmat, 2), nfreq)
+    for i = 1:nfreq
+        println(size(D[:,:,i]))
+        # println(size(pFor.TEmat))
+        Dres[:,:,i] = D[:,:,i] * pFor.TEmat;
+    end
+    return Dres ,pFor
 end
