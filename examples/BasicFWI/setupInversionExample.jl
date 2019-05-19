@@ -74,7 +74,6 @@ q = zeros(tuple(n.+1...)); q[padx+1:4:end-padx-1,1] .= 1e4
 Q = sdiag(vec(q))
 Q = Q[:,(LinearIndices(sum(Q,dims=2) .!= 0))[findall(sum(Q,dims=2) .!= 0)]]
 nsrc = size(Q,2)
-println(size(Q))
 # receivers
 p = zeros(tuple(n.+1...)); p[padx+1:end-padx-1,1] .= 1
 P = sdiag(vec(p))

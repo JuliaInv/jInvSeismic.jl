@@ -10,7 +10,7 @@ function getData(m,pFor::BasicFWIparam,doClear::Bool=false)
     gamma = pFor.gamma
     Q     = pFor.Sources
     P     = pFor.Receivers
-    TEmat = pFor.TEmat
+    # Qo = pFor.originalSources
 
     nrec  = size(P,2)
     nsrc  = size(Q,2)
@@ -36,11 +36,5 @@ function getData(m,pFor::BasicFWIparam,doClear::Bool=false)
     tend = time_ns();
     println("Runtime of getData:");
     println((tend - tstart)/1.0e9);
-    Dres = zeros(nrec, size(TEmat, 2), nfreq)
-    for i = 1:nfreq
-        println(size(D[:,:,i]))
-        # println(size(pFor.TEmat))
-        Dres[:,:,i] = D[:,:,i] * pFor.TEmat;
-    end
-    return Dres ,pFor
+    return D ,pFor
 end

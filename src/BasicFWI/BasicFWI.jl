@@ -32,7 +32,7 @@ mutable struct BasicFWIparam <: ForwardProbType
     Mesh      # Mesh
 	Fields    # Fields
 	Ainv      # LU factorization
-	TEmat	  # matrix to reduce dimension for trace estimation
+	originalSources	  # sources before trace estimation
 end
 
 export getBasicFWIparam
@@ -42,7 +42,7 @@ export getBasicFWIparam
 	constructs BasicFWI param
 
 """
-function getBasicFWIparam(omega,gamma,Q,P,Mesh,TEmat,doDistribute=false)
+function getBasicFWIparam(omega,gamma,Q,P,Mesh,doDistribute=false)
     nfreq = length(omega)
 
     if doDistribute && (nfreq > 1)
@@ -71,7 +71,7 @@ function getBasicFWIparam(omega,gamma,Q,P,Mesh,TEmat,doDistribute=false)
             end
         end
     else
-        pFor = BasicFWIparam(omega,gamma,Q,P,Mesh,[],[],TEmat)
+        pFor = BasicFWIparam(omega,gamma,Q,P,Mesh,[],[],Q)
     end
     return pFor
 end

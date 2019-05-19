@@ -1,4 +1,3 @@
-tstart = time_ns();
 include("setupInversionExample.jl");
 
 @everywhere begin
@@ -10,6 +9,7 @@ using jInvVis
 using PyPlot
 
 close("all")
+tstart = time_ns();
 
 function plotInputData()
 	figure(20)
@@ -19,13 +19,11 @@ function plotInputData()
 	imshow(reshape(gamma,tuple(size(m)...))');
 end
 plotInputData();
-
 Dobs, Wd = solveForwardProblem(m, pForp, omega, nrec, nsrc, nfreq);
-etaM = 2 .*diagm(0 => vec(Wd[1][:,1])).*diagm(0 => vec(Wd[1][:,1]));
 
-#show observed data
 for i=1:nfreq
 	figure(i);
+
 	imshow(Dobs[i][:,:]);
 end
 
@@ -41,8 +39,8 @@ nz = size(m)[2];
 figure(22);
 imshow(mref'); colorbar();
 
-mc, Dc, pInv, Iact, mback = solveInverseProblemTraceEstimation(pForp, Dobs, Wd, nfreq, nx, nz, mref,
-							Mr, 0.5, 0.035,"TE_FWI.dat", true, plotModelResult);
+mc, Dc, pInv, Iact, mback = solveInverseProblem(pForp, Dobs, Wd, nfreq, nx, nz, mref,
+												Mr, 0.5, 0.035,"ORIG_FWI.dat", true, plotModelResult);
 
 #Show results
 fullMc = reshape(Iact*pInv.modelfun(mc)[1] + mback,tuple((pInv.MInv.n)...));
