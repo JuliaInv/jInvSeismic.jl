@@ -8,6 +8,7 @@ end
 
 using jInvVis
 using PyPlot
+using LinearAlgebra
 
 close("all")
 
