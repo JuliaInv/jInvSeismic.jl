@@ -7,6 +7,36 @@ git-tree-sha1 = "12093ca6cdd0ee547c39b1870e0c9c3f154d9ca9"
 uuid = "9e28174c-4ba2-5203-b857-d8d62c4213ee"
 version = "0.8.10"
 
+[[BinaryProvider]]
+deps = ["Libdl", "Logging", "SHA"]
+git-tree-sha1 = "c7361ce8a2129f20b0e05a89f7070820cfed6648"
+uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
+version = "0.5.6"
+
+[[Blosc]]
+deps = ["BinaryProvider", "CMakeWrapper", "Compat", "Libdl"]
+git-tree-sha1 = "71fb23581e1f0b0ae7be8ccf0ebfb3600e23ca41"
+uuid = "a74b3585-a348-5f62-a45c-50e91977d574"
+version = "0.5.1"
+
+[[BufferedStreams]]
+deps = ["Compat", "Test"]
+git-tree-sha1 = "5d55b9486590fdda5905c275bb21ce1f0754020f"
+uuid = "e1450e63-4bb3-523b-b2a4-4ffa8c0fd77d"
+version = "1.0.0"
+
+[[CMake]]
+deps = ["BinDeps"]
+git-tree-sha1 = "c67a8689dc5444adc5eb2be7d837100340ecba11"
+uuid = "631607c0-34d2-5d66-819e-eb0f9aa2061a"
+version = "1.1.2"
+
+[[CMakeWrapper]]
+deps = ["BinDeps", "CMake", "Libdl", "Parameters", "Test"]
+git-tree-sha1 = "16d4acb3d37dc05b714977ffefa8890843dc8985"
+uuid = "d5fb7624-851a-54ee-a528-d3f3bac0b4a0"
+version = "0.2.3"
+
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
 git-tree-sha1 = "84aa74986c5b9b898b0d1acaf3258741ee64754f"
@@ -25,23 +55,43 @@ uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 deps = ["LinearAlgebra", "Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
+[[FactoredEikonalFastMarching]]
+deps = ["KrylovMethods", "LinearAlgebra", "ParSpMatVec", "Printf", "Statistics", "Test", "jInv"]
+git-tree-sha1 = "03aee040ef0016bb1822831d344d18c8c4de88ec"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaInv/FactoredEikonalFastMarching.jl.git"
+uuid = "a21af1b0-b122-11e9-3f46-a5fb68b7f21f"
+version = "0.1.0"
+
+[[HDF5]]
+deps = ["BinaryProvider", "Blosc", "Libdl", "Mmap"]
+git-tree-sha1 = "635ae44613c8c8dcf5d5b0084bfa00abea498e1f"
+uuid = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
+version = "0.12.0"
+
 [[InteractiveUtils]]
 deps = ["LinearAlgebra", "Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[KrylovMethods]]
-deps = ["LinearAlgebra", "Printf", "SparseArrays", "Test"]
-git-tree-sha1 = "f9d4e62c060e5f4c8e253ace3b8faff62b3c1565"
+deps = ["LinearAlgebra", "Printf", "SparseArrays"]
+git-tree-sha1 = "32a8af2c351d5fc2b576ba48e9e905a14aa05a7d"
 repo-rev = "master"
 repo-url = "https://github.com/lruthotto/KrylovMethods.jl.git"
 uuid = "9a2cd570-f05c-5dc1-9209-93ad6f5727f7"
-version = "0.4.0+"
+version = "0.5.0"
 
 [[LibGit2]]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 
 [[Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+
+[[Libz]]
+deps = ["BufferedStreams", "Random", "Test"]
+git-tree-sha1 = "d405194ffc0293c3519d4f7251ce51baac9cc871"
+uuid = "2ec943e9-cfe8-584d-b93d-64dcb6d567b7"
+version = "1.0.0"
 
 [[LinearAlgebra]]
 deps = ["Libdl"]
@@ -50,6 +100,17 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
+[[MAT]]
+deps = ["BufferedStreams", "HDF5", "Libz", "LinearAlgebra", "SparseArrays", "Test"]
+git-tree-sha1 = "e7c19d868d482cf62ba33afd2087ccc00de4f7f5"
+uuid = "23992714-dd62-5051-b70f-ba57cb901cac"
+version = "0.5.0"
+
+[[MUMPSjInv]]
+git-tree-sha1 = "fccdf7c64e1a8d618b9e128446347b2e241bcf75"
+uuid = "bf6389e2-cca1-5e17-ac22-36425c4ccbb4"
+version = "0.0.2"
+
 [[Markdown]]
 deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
@@ -57,13 +118,25 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 [[Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
+[[OrderedCollections]]
+deps = ["Random", "Serialization", "Test"]
+git-tree-sha1 = "c4c13474d23c60d20a67b217f1d7f22a40edf8f1"
+uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
+version = "1.1.0"
+
 [[ParSpMatVec]]
-deps = ["BinDeps", "Distributed", "Libdl", "LinearAlgebra", "Pkg", "Printf", "SparseArrays", "Test"]
-git-tree-sha1 = "57e4adab019731ccb99a02d71ea6a768f3f4f345"
+deps = ["Libdl", "LinearAlgebra", "SparseArrays"]
+git-tree-sha1 = "78a1c05f2d1a5ac6c178590594195031a222aaba"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaInv/ParSpMatVec.jl.git"
-uuid = "46e045f0-2ea7-11e9-2e29-a9e59055879a"
-version = "0.1.0"
+uuid = "ccf9b6e2-7ea7-596a-9d65-09863b18e8cc"
+version = "0.1.1"
+
+[[Parameters]]
+deps = ["Markdown", "OrderedCollections", "REPL", "Test"]
+git-tree-sha1 = "70bdbfb2bceabb15345c0b54be4544813b3444e4"
+uuid = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+version = "0.10.3"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
@@ -120,9 +193,9 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [[jInv]]
-deps = ["Distributed", "KrylovMethods", "LinearAlgebra", "ParSpMatVec", "Pkg", "Printf", "SparseArrays", "Test"]
-git-tree-sha1 = "054155e9730390145710fcd1b323a4699c371f48"
+deps = ["Distributed", "KrylovMethods", "LinearAlgebra", "MUMPSjInv", "ParSpMatVec", "Pkg", "Printf", "SparseArrays", "Test"]
+git-tree-sha1 = "28f8214e77338a9b5b7b42402d6beaf4d05a0f24"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaInv/jInv.jl.git"
-uuid = "dfd06120-4570-11e9-1976-1f1543b65420"
-version = "0.7.0"
+uuid = "3dacf901-f8cd-5544-86ed-7a705f85c244"
+version = "0.7.3"

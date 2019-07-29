@@ -11,8 +11,6 @@ if nworkers()==1
 	addprocs(1)
 end
 
-
-println("IM here")
 @everywhere begin
 	using jInvSeismic.BasicFWI
 	using jInv.Mesh

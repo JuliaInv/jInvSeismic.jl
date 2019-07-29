@@ -1,6 +1,31 @@
 
 export readSrcRcvLocationFile,generateSrcRcvProjOperators,readDataFileToDataMat,writeSrcRcvLocFile,writeDataFile,limitDataToOffset
 
+function cs2loc(cs_loc::Int64, n::Array{Int64,1})
+loc = zeros(Int64,length(n))
+if length(n)==2
+	@inbounds loc[1] = mod(cs_loc-1,n[1])+1;
+	@inbounds loc[2] = div(cs_loc-1,n[1])+1;
+elseif length(n)==3
+	@inbounds loc[1] = mod(cs_loc-1,n[1]) + 1;
+	@inbounds loc[2] = div(mod(cs_loc-1,n[1]*n[2]),n[1]) + 1;
+	@inbounds loc[3] = div(cs_loc-1,n[1]*n[2])+1;
+end
+return loc;
+end
+
+
+function loc2cs(loc1::Int64,loc2::Int64,n::Array{Int64,1})
+@inbounds cs = loc1 + (loc2-1)*n[1];
+return cs;
+end
+
+function loc2cs3D(loc1::Int64,loc2::Int64,loc3::Int64,n::Array{Int64,1})
+@inbounds cs = loc1 + (loc2-1)*n[1] + (loc3-1)*n[1]*n[2];
+return cs;
+end
+
+
 function readSrcRcvLocationFile(filename,M::RegularMesh)
 # read files for sources and receivers location in UTM and translate them into indices locations.
 # file contains a table: idx xUTM yUTM zUTM
@@ -11,9 +36,9 @@ n = M.n;
 # n: number of cells. (n-1: number of cells)
 
 for k=1:M.dim
-	A[:,k+1] = A[:,k+1] - domainBoundaryUTM[2*k-1];
+	A[:,k+1] = A[:,k+1] .- domainBoundaryUTM[2*k-1];
 	A[:,k+1] = A[:,k+1] ./ (domainBoundaryUTM[2*k] - domainBoundaryUTM[2*k-1]);
-	A[:,k+1] = round.(A[:,k+1] .* (n[k]))+1.0;
+	A[:,k+1] = round.(A[:,k+1] .* (n[k])) .+ 1.0;
 end
 A = round.(Int,A);
 return A;
@@ -28,9 +53,11 @@ V = zeros(Float64,nSrcRcv);
 for k=1:nSrcRcv
 	J[k] = k;
 	if length(n_nodes)==2
-		I[k] = sub2ind(tuple(n_nodes...),SrcRcvNodeLoc[k,2],SrcRcvNodeLoc[k,3]);
+		#I[k] = sub2ind(tuple(n_nodes...),SrcRcvNodeLoc[k,2],SrcRcvNodeLoc[k,3]);
+		I[k] = loc2cs(SrcRcvNodeLoc[k,2],SrcRcvNodeLoc[k,3],n_nodes);
 	else
-		I[k] = sub2ind(tuple(n_nodes...),SrcRcvNodeLoc[k,2],SrcRcvNodeLoc[k,3],SrcRcvNodeLoc[k,4]);
+		#I[k] = sub2ind(tuple(n_nodes...),SrcRcvNodeLoc[k,2],SrcRcvNodeLoc[k,3],SrcRcvNodeLoc[k,4]);
+		I[k] = loc2cs3D(SrcRcvNodeLoc[k,2],SrcRcvNodeLoc[k,3],SrcRcvNodeLoc[k,4],n_nodes)
 	end
 	V[k] = 1.0;
 end
@@ -94,23 +121,24 @@ end
 
 function writeSrcRcvLocFile(filename,Msh::RegularMesh,pad::Int64,jump::Int64)
 # writes an equally distanced sources/receivers file.
-n_tup = tuple((Msh.n+1)...); # n_tup is nodes...
-Q = zeros(n_tup);
+n_nodes = Msh.n.+1;
+Q = zeros(Bool, tuple(n_nodes...));
 
 if Msh.dim==2
-	Q[pad+1:jump:end-pad,1] = 1.0
+	Q[pad+1:jump:end-pad,1] .= true;
 else	
-	Q[pad+1:jump:end-pad,pad+1:jump:end-pad,1] = 1.0;
+	Q[pad+1:jump:end-pad,pad+1:jump:end-pad,1] .= true;
 end
 numSrcRcv = round(Int,sum(Q));
-Q = find(Q);
+Q = findall(Q[:]);
 SrcRcvTable = zeros(numSrcRcv,1+Msh.dim);
 SrcRcvIDs = randperm(numSrcRcv);
 SrcRcvIDs = sort(SrcRcvIDs[1:numSrcRcv]);
-SrcRcvTable[:,1] = SrcRcvIDs;
+SrcRcvTable[:,1] .= SrcRcvIDs;
 startLocations = Msh.domain[1:2:end];
 for k=1:numSrcRcv
-	SrcRcvTable[k,2:end] = (collect(ind2sub(n_tup,Q[k]))-1).*Msh.h + startLocations;
+	#SrcRcvTable[k,2:end] = (collect(ind2sub(n_tup,Q[k])).-1).*Msh.h .+ startLocations;
+	SrcRcvTable[k,2:end] .= (cs2loc(Q[k],n_nodes).-1).*Msh.h .+ startLocations;
 end
 writedlm(filename,SrcRcvTable);
 end
@@ -122,7 +150,7 @@ rcvIDs = RcvNodeLoc[:,1];
 
 if eltype(D)==Float64
 	println("Writing real data file");  
-	Data = zeros(Float32,countnz(Wd),4);
+	Data = zeros(Float32,count(!iszero, Wd),4);
 	k = 1;
 	for j = 1:size(D,2) 
 		for i = 1:size(D,1)
@@ -137,7 +165,7 @@ if eltype(D)==Float64
 	end
 else
 	println("Writing ``complex'' data file");
-	Data = zeros(Float32,countnz(Wd),6);
+	Data = zeros(Float32,count(!iszero, Wd),6);
 	k = 1;
 	for j = 1:size(D,2) 
 		for i = 1:size(D,1)
@@ -162,7 +190,7 @@ for j = 1:size(Wd,2)
 	srcLoc = SrcNodeLoc[j,2:end];
 	for i = 1:size(Wd,1)
 		rcvLoc = RcvNodeLoc[i,2:end];
-		dist = norm(srcLoc - rcvLoc);
+		dist = norm(srcLoc .- rcvLoc);
 		# dist = rcvLoc[1] - srcLoc[1];
 		if dist > offsetInNodes || dist < 2
 			Wd[i,j] = 0.0;

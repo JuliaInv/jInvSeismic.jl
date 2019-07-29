@@ -37,33 +37,33 @@ return s;
 end
 
 function velocityToSlowSquared(v::Array)
-s = (1.0./(v+1e-16)).^2
-ds = spdiagm((-2.0)./(v[:].^3));
+s = (1.0./(v.+1e-16)).^2
+ds = sparse(Diagonal((-2.0)./(v[:].^3)));
 return s,ds
 end
 
 function slowSquaredToVelocity(s::Array)
 m = 1.0/sqrt.(s+1e-16);
-dm = spdiagm(-0.5*(1.0/(s[:].^(3.0/2.0))));
+dm = sparse(Diagonal((-0.5*(1.0/(s[:].^(3.0/2.0))))));
 return m,dm
 end
 
 function velocityToSlow(v::Array)
 s = (1.0/(v+1e-16))
-ds = spdiagm((-1.0)./(v[:].^2));
+ds = sparse(Diagonal(((-1.0)./(v[:].^2))));
 return s,ds
 end
 
 
 function slowToSlowSquared(v::Array)
 s = v.^2;
-ds = spdiagm(2.0*v[:]);
+ds = sparse(Diagonal((2.0*v[:])));
 return s,ds
 end
 
 function slowSquaredToSlow(v::Array)
 s = sqrt.(v);
-ds = spdiagm(0.5./s[:]);
+ds = sparse(Diagonal((0.5./s[:])));
 return s,ds
 end
 
@@ -109,7 +109,7 @@ if length(size(m))==2
 		mbottom = mean(mbottom[:]);
 		println("Mref bottom = ",mbottom);
 	end
-	m_vel = ones(nx)*linspace(mtop,mbottom,nz)';
+	m_vel = ones(nx)*range(mtop,stop=mbottom,length=nz)';
 	mref = m_vel;
 elseif length(size(m))==3
 	(nx,ny,nz) = size(m);
@@ -122,7 +122,7 @@ elseif length(size(m))==3
 		mbottom = m_vel[1:10,:,end-10:end];
 		mbottom = mean(mbottom[:]);	
 	end
-	lin = linspace(mtop,mbottom,nz);
+	lin = range(mtop,stop=mbottom,length=nz);
 	m_vel = copy(m);
 	Oplane = ones(nx,ny);
 	for k=1:nz
@@ -142,9 +142,9 @@ if pad<=0
 end
 mnew = zeros(size(m,1)+2*pad,size(m,2)+pad);
 mnew[pad+1:end-pad,1:end-pad] = m;
-mnew[1:pad,1:end-pad] = repmat(m[[1],:],pad,1);
-mnew[end-pad+1:end,1:end-pad] = repmat(m[[end],:],pad,1);
-mnew[:,end-pad+1:end] = repmat(mnew[:,end-pad],1,pad);
+mnew[1:pad,1:end-pad] = repeat(m[[1],:],pad,1);
+mnew[end-pad+1:end,1:end-pad] = repeat(m[[end],:],pad,1);
+mnew[:,end-pad+1:end] = repeat(mnew[:,end-pad],1,pad);
 return mnew;
 end
 
@@ -157,7 +157,7 @@ Omega = Msh.domain;
 
 if length(size(m))==2
 	mnew = addAbsorbingLayer2D(m,pad);
-	MshNew = getRegularMesh([Omega[1],Omega[2] + 2*pad*Msh.h[1],Omega[3],Omega[4]+pad*Msh.h[2]],collect(size(mnew))-1);
+	MshNew = getRegularMesh([Omega[1],Omega[2] + 2*pad*Msh.h[1],Omega[3],Omega[4]+pad*Msh.h[2]],collect(size(mnew)).-1);
 elseif length(size(m))==3
 	mnew = zeros(size(m,1)+2*pad,size(m,2)+2*pad,size(m,3)+pad);
 	mnew[pad+1:end-pad,pad+1:end-pad,1:end-pad] = m;

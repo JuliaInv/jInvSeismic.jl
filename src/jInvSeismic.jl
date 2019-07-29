@@ -1,4 +1,5 @@
 module jInvSeismic
-include("BasicFWI/BasicFWI.jl")
 include("Utils/Utils.jl")
+include("BasicFWI/BasicFWI.jl")
+include("EikonalInv/EikonalInv.jl")
 end

@@ -1,8 +1,8 @@
 include("setupInversionTest.jl");
 
 @everywhere begin
-using jInv.InverseSolve
-using jInv.LinearSolvers
+	using jInv.InverseSolve
+	using jInv.LinearSolvers
 end
 
 using Test
