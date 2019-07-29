@@ -9,11 +9,13 @@
 
 jInvSeismic consists of submodules:
 
-1. `EikonalInv.jl'
-A Julia package for solving the inverse eikonal equation on a regular rectangular mesh.
+1. `jInvSeismic.EikonalInv` - A Julia package for solving the inverse eikonal equation on a regular rectangular mesh.
 For forward modelling and sensitivities it uses the fast marching algorithm for the factored eikonal equation.
+2. `jInvSeismic.BasicFWI` - a lightweight basic Full Waveform Inversion in Julia.
+3. `jInvSeismic.Utils` - utility functions for seismic inversions.
 
-Based on the following paper (please cite if you are using the package):
+# Citations and literature
+The EikonalInv package is based on the following paper (please cite if you are using the package):
 
 Eran Treister and Eldad Haber, A fast marching algorithm for the factored eikonal equation, Journal of Computational Physics, 324, 210-225, 2016.
 
@@ -21,11 +23,6 @@ The package is also used in the following papers in joint inversions:
 Lars Ruthotto, Eran Treister and Eldad Haber, jInv--a flexible Julia package for PDE parameter estimation, SIAM Journal on Scientific Computing, 39 (5), S702-S722, 2017. 
 
 Eran Treister and Eldad Haber, Full waveform inversion guided by travel time tomography, SIAM Journal on Scientific Computing, 39 (5), S587-S609, 2017.
-
-2. `jInvSeismic.BasicFWI` - a lightweight basic Full Waveform Inversion in Julia.
-3. `Utils` - utility functions.
-
-
 
 # Requirements
 
@@ -47,7 +44,7 @@ Pkg.test("jInvSeismic")
 
 # Examples
 
-Under "examples/SEGTravelTimeInversionExample.jl" you can find the 2D experiment that was shown in the paper above. 
+Under "examples/TravelTimeTomography/SEGTravelTimeInversionExample.jl" you can find the 2D experiment that was shown in the paper above. 
 
 
 
