@@ -14,7 +14,7 @@ For forward modelling and sensitivities it uses the fast marching algorithm for 
 2. `jInvSeismic.BasicFWI` - a lightweight basic Full Waveform Inversion in Julia.
 3. `jInvSeismic.Utils` - utility functions for seismic inversions.
 
-# Citations and literature
+# Literature
 The EikonalInv package is based on the following paper (please cite if you are using the package):
 
 Eran Treister and Eldad Haber, A fast marching algorithm for the factored eikonal equation, Journal of Computational Physics, 324, 210-225, 2016.
