@@ -6,10 +6,10 @@ function slowToLeveledSlowSquared(s,mid::Float64 = 0.32,a::Float64 = 0.0,b::Floa
 d = (b-a)./2.0;
 dinv = 200;
 tt = dinv.*(mid-s);
-t = -d.*(tanh(tt)+1) + a;
-dt = (dinv*d)*(sech(tt)).^2 + 1;
+t = -d.*(tanh(tt).+1) + a;
+dt = (dinv*d)*(sech(tt)).^2 .+ 1;
 # up until here it's just the slowness
-dt = spdiagm(2*(t+s).*dt);
+dt = spdiagm(2.0.*(t+s).*dt);
 t = (t + s).^2;
 return t,dt
 end
@@ -43,13 +43,13 @@ return s,ds
 end
 
 function slowSquaredToVelocity(s::Array)
-m = 1.0/sqrt.(s+1e-16);
+m = 1.0./sqrt.(s.+1e-16);
 dm = sparse(Diagonal((-0.5*(1.0/(s[:].^(3.0/2.0))))));
 return m,dm
 end
 
 function velocityToSlow(v::Array)
-s = (1.0/(v+1e-16))
+s = (1.0./(v.+1e-16))
 ds = sparse(Diagonal(((-1.0)./(v[:].^2))));
 return s,ds
 end
@@ -57,7 +57,7 @@ end
 
 function slowToSlowSquared(v::Array)
 s = v.^2;
-ds = sparse(Diagonal((2.0*v[:])));
+ds = sparse(Diagonal((2.0.*v[:])));
 return s,ds
 end
 

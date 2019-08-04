@@ -1,16 +1,20 @@
 name = "jInvSeismic"
 uuid = "9a705e90-610f-11e9-2434-3b0eb5f83adc"
 authors = ["Eran Treister <erantreister@gmail.com>"]
-version = "0.2.0"
+version = "0.3.0"
 
 [deps]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 FactoredEikonalFastMarching = "a21af1b0-b122-11e9-3f46-a5fb68b7f21f"
+Helmholtz = "e64c32b0-b297-11e9-3d04-db45b5588c0d"
 KrylovMethods = "9a2cd570-f05c-5dc1-9209-93ad6f5727f7"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
+Multigrid = "3ee21790-adf8-11e9-0909-2103a2f09851"
 ParSpMatVec = "ccf9b6e2-7ea7-596a-9d65-09863b18e8cc"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"

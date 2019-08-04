@@ -1,5 +1,6 @@
 using Test
 
-include("BasicFWI/runtests.jl")
-include("EikonalInv/runtests.jl")
+#include("BasicFWI/runtests.jl")
+#include("EikonalInv/runtests.jl")
+include("FWI/runtests.jl")
 
