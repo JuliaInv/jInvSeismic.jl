@@ -31,8 +31,10 @@ mutable struct BasicFWIparam <: ForwardProbType
     Receivers # Receivers
     Mesh      # Mesh
 	Fields    # Fields
+	# Helmholtz # Helmholtz operators
 	Ainv      # LU factorization
 	originalSources	  # sources before trace estimation
+	ExtendedSources
 end
 
 export getBasicFWIparam
@@ -71,7 +73,7 @@ function getBasicFWIparam(omega,gamma,Q,P,Mesh,doDistribute=false)
             end
         end
     else
-        pFor = BasicFWIparam(omega,gamma,Q,P,Mesh,[],[],Q)
+        pFor = BasicFWIparam(omega,gamma,Q,P,Mesh,[],[],Q,Q)
     end
     return pFor
 end

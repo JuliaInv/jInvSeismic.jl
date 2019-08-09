@@ -87,6 +87,21 @@ function getFreqContParams(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
 	return pInv, pMis, plotIntermediateResults, Iact, mback;
 end
 
+export solveInverseProblemZs
+function solveInverseProblemZs(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
+	nfreq::Int64, nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
+	boundsHigh::Float64, boundsLow::Float64, resultsFilename::String, plotting::Bool=false,
+	plottingFunc::Function=dummy)
+
+	pInv, pMis, plotIntermediateResults, Iact, mback = getFreqContParams(pFor, Dobs, Wd, nfreq, nx, nz, mref, Mr,
+		boundsHigh, boundsLow, plotting, plottingFunc);
+
+	# Run one sweep of a frequency continuation procedure.
+	mc, Dc = freqContZs(copy(mref[:]), pInv, pMis, nfreq, 4,Iact,mback, plotIntermediateResults, resultsFilename, 1);
+
+	return mc, Dc, pInv, Iact, mback;
+end
+
 
 export solveInverseProblem
 function solveInverseProblem(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,

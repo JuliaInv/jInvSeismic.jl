@@ -22,7 +22,7 @@ end
 plotInputData();
 
 Dobs, Wd = solveForwardProblem(m, pForp, omega, nrec, nsrc, nfreq);
-etaM = 2 .*diagm(0 => vec(Wd[1][:,1])).*diagm(0 => vec(Wd[1][:,1]));
+# etaM = 2 .*diagm(0 => vec(Wd[1][:,1])).*diagm(0 => vec(Wd[1][:,1]));
 
 #show observed data
 for i=1:nfreq
@@ -42,7 +42,7 @@ nz = size(m)[2];
 figure(22);
 imshow(mref'); colorbar();
 
-mc, Dc, pInv, Iact, mback = solveInverseProblemTraceEstimation(pForp, Dobs, Wd, nfreq, nx, nz, mref,
+mc, Dc, pInv, Iact, mback = solveInverseProblemZs(pForp, Dobs, Wd, nfreq, nx, nz, mref,
 							Mr, 0.5, 0.035,"TE_FWI.dat", true, plotModelResult);
 
 #Show results

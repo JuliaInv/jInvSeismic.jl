@@ -18,6 +18,7 @@ end
 	using jInv.Mesh
 	using jInv.Utils
 	using jInv.ForwardShare
+	using jInv.InverseSolve
 
 function readModelAndGenerateMeshMref(readModelFolder::String,modelFilename::String,dim::Int64,pad::Int64,domain::Vector{Float64},newSize::Vector=[],velBottom::Float64=0.0,velHigh::Float64=0.0)
 ########################## m,mref are in Velocity here. ###################################
@@ -71,8 +72,11 @@ omega = 2*pi*[2.0;2.5;3.5;4.5;6.0;]
 nfreq = length(omega)
 # generate sources
 q = zeros(tuple(n.+1...)); q[padx+1:4:end-padx-1,1] .= 1e4
+print(size(q))
 Q = sdiag(vec(q))
+print(size(Q))
 Q = Q[:,(LinearIndices(sum(Q,dims=2) .!= 0))[findall(sum(Q,dims=2) .!= 0)]]
+print(size(Q))
 nsrc = size(Q,2)
 # receivers
 p = zeros(tuple(n.+1...)); p[padx+1:end-padx-1,1] .= 1
