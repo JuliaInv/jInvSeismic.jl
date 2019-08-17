@@ -8,9 +8,9 @@ using Distributed
 using DelimitedFiles
 
 if nworkers() == 1
-	addprocs(5);
-elseif nworkers() < 5
-	addprocs(5 - nworkers());
+	addprocs(10);
+elseif nworkers() < 10
+	addprocs(10 - nworkers());
 end
 
 @everywhere begin

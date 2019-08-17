@@ -63,38 +63,44 @@ end
 Ap, diag are matrices such that diag is diagonal and ASum(Ap(i)*diag(i)*Ap(i)^T)
 calculates x where Ax=b, relevant when A is too big to save in memory
 """
-function conjGradEx(Ap::Vector{Matrix}, diags::Vector{SparseMatrixCSC},
+function conjGradEx(beta::Float64, Ap::Vector{Matrix}, diags::Vector{SparseMatrixCSC},
 	b::Vector{Vector}, meshSize::Int, ref::Vector,
 	numIters::Int)
 	problemsSize = length(Ap);
 	println("S", problemsSize);
 	r = zeros(meshSize);
+
 	for i = 1:problemsSize
 		println(size(r))
 		println(size(Ap[i]),size(diags[i]), size(ref))
-		r += b[i] - Ap[i] * diags[i] * ((Ap[i])' * ref);
+		r += b[i] - Ap[i] * diags[i] * ((Ap[i])' * ref) - 2 * beta .* ref;
 	end
 	p = copy(r);
-	A = sum(map((Xp, diag) -> Xp * diag * Xp', Ap, diags));
-	println("SPD:", A' == A)
+	# A = sum(map((Xp, diag) -> Xp * diag * Xp', Ap, diags));
+	# println("SPD:", A' == A)
 	B = sum(b);
-	divider = sum(map((Xp, diag) -> p' * Xp * diag * (Xp' * p), Ap, diags));
-	threshold = 1e-10;
+
+	threshold = 1e-5;
 	for i = 1:numIters
 		println("Current Iter: ", i);
-		println("size ref", size(ref), size(A));
-		println("norm r ", norm(B - A*ref));
+		# println("size ref", size(ref), size(A));
+		# println("norm r ", norm(B - A*ref));
+		divider = sum(map((Xp, diag) -> p' * Xp * diag * (Xp' * p) .+ 2 * beta .* p' * p, Ap, diags));
 		alpha = (r' * r) / divider;
 		println(alpha);
-		refDiff = alpha * p;
-		if norm(refDiff) < threshold
-			return ref + refDiff;
-		end
+		refDiff = alpha .* p;
+		# println("BBB")
 		ref += refDiff;
-		rNext = r -  alpha * sum(map((Xp, diag) -> Xp * diag * (Xp' * p), Ap, diags));
+		rNext = r -  alpha .* sum(map((Xp, diag) -> Xp * diag * (Xp' * p) + 2 * beta .* p, Ap, diags));
+# println("BBB2")
+		if norm(rNext) < threshold
+			return ref;
+		end
+		# println("BBB3")
 		bet = (rNext' * rNext) / (r' * r);
+		# println("BBB4")
 		r = rNext;
-		p = r + bet * p;
+		p = r + bet .* p;
 		println("refdiff:",norm(refDiff));
 		println(norm(p));
 	end
@@ -249,38 +255,43 @@ function jacobi(beta::Float64, sizeH::Tuple, numOfCurrentProblems::Int64,
 end
 
 function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
-	pMisArr::Array{MisfitParam}, s::Int64)
+	pMisArr::Array{MisfitParam}, s::Int64, HinvPs::Vector{Array}, beta::Float64)
 	recvSize = size(pMisArr[1].pFor.Receivers)
 
 	# sizeZ = size(Z[:,s])
-	println("AAAA")
+	println("staring")
 	numOfCurrentProblems = size(currentProblems, 1);
-	# println("SIZE AP:", size(Ap))
-	# Ap = Vector{Matrix}(undef, numOfCurrentProblems);
-	# diags = Vector{SparseMatrixCSC}(undef, numOfCurrentProblems);
-	# B = Vector{Vector}(undef, numOfCurrentProblems);
+	# println("SIZE A;:", size(Ap))
+	Ap = Vector{Matrix}(undef, numOfCurrentProblems);
+	diags = Vector{SparseMatrixCSC}(undef, numOfCurrentProblems);
+	B = Vector{Vector}(undef, numOfCurrentProblems);
 	# ref = Vector(pMisArr[1].pFor.Sources[:,s])
-	beta = 1e-2;
+	ref = zeros(sizeH[1])
+	# beta = 1e-8;
 	# # A = zeros(sizeH[1], sizeH[2]);
 	# # Bs = zeros(sizeH[1]);
-	# for i=1:numOfCurrentProblems
-	# 	P = pMisArr[i].pFor.Receivers;
-	# 	WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
-	# 	LUcur = pMisArr[i].pFor.Ainv[1];
-	# 	LUcur = LUcur';
-	# 	HinvP = zeros(ComplexF64, size(P))
-	# 	HinvP = LUcur \ Matrix(P);
-	# 	println("Size Hinv:", size(HinvP))
-	# 	# println(size(diag))
-	# 	# println(size(WdSqr))
-	# 	Ap[i] =  real(HinvP);
-	# 	diags[i] =  real(WdSqr);
-	# 	# A1 = A + HinvP * WdSqr * HinvP'
-	# 	# A = A + Ap[i] * diags[i] * (Ap[i])' + 2 * beta .* I;
-	# 	B[i] =  real(2 * beta .* pMisArr[i].pFor.originalSources[:, s] +  HinvP * WdSqr * pMisArr[i].dobs[:,s,1]);
-	# 	# Bs = Bs + 2 * beta .* pMisArr[i].pFor.originalSources[:, s] +  HinvP * WdSqr * pMisArr[i].dobs[:,s,1];
-	# end
-
+	# PB = zeros(sizeH[1]);
+	for i=1:numOfCurrentProblems
+		P = pMisArr[i].pFor.Receivers;
+		WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
+		# LUcur = pMisArr[i].pFor.Ainv[1];
+		Ap[i] = real(HinvPs[i])
+		# LUcur = LUcur';
+		# HinvP = zeros(ComplexF64, size(P))
+		# HinvP = LUcur \ Matrix(P);
+		# println("Size Hinv:", size(HinvP))
+		# println(size(diag))
+		# println(size(WdSqr))
+		# Ap[i] =  real(HinvP);
+		diags[i] =  real(WdSqr);
+		# A1 = A + HinvP * WdSqr * HinvP'
+		# A = A + Ap[i] * diags[i] * (Ap[i])' + 2 * beta .* I;
+		# PB += real(HinvP * WdSqr * pMisArr[i].dobs[:,s,1]);
+		B[i] =  real(2 * beta .* pMisArr[i].pFor.originalSources[:, s] +  HinvPs[i] * WdSqr * pMisArr[i].dobs[:,s,1]);
+		# Bs = Bs + 2 * beta .* pMisArr[i].pFor.originalSources[:, s] +  HinvP * WdSqr * pMisArr[i].dobs[:,s,1];
+	end
+	println("AABBB");
+	# writedlm(string("B_",s), PB);
 	# for i = 1:numOfCurrentProblems
 	# 	# println("Size diags:", size(A))
 	# 	# println("Size ap:", size(Ap[i]))
@@ -300,63 +311,31 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	# writedlm(string("B", s, "_", inx), Bs)
 	# writedlm(string("Aq", s, "_", inx), A[:, :])
 	# newSource = real(A\Vector(Bs));
-	newSource = jacobi(beta, sizeH, numOfCurrentProblems, pMisArr, s, 20);
+	newSource = conjGradEx(beta, Ap, diags, B, sizeH[1], ref, 6);
+	println("SZ:",size(newSource))
+	# newSource = jacobi(beta, sizeH, numOfCurrentProblems, pMisArr, s, 20);
 	# println(nor)
 	writedlm(string("Ns", s, "_", inx), newSource)
 	return newSource
 	# return pMisCurAll;
 end
 function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
-	pMisArr::Array{MisfitParam}, indexes::StepRange)
+	pMisArr::Array{MisfitParam}, indexes::StepRange, HinvPs::Vector{Array},
+	beta::Float64)
 	newSources = Array{Array}(undef, size(indexes))
 	println(inx);
 	for (i, s) in enumerate(indexes)
-		newSources[i] = calculateZs(currentProblems, sizeH, pMisArr, s);
+		newSources[i] = calculateZs(currentProblems, sizeH, pMisArr, s, HinvPs,
+		beta);
 	end
 	return newSources;
 end
-function freqContZs(mc, pInv::InverseParam, pMis::Array{RemoteChannel},nfreq::Int64, windowSize::Int64,
-	Iact,mback::Union{Vector,AbstractFloat,AbstractModel, Array{Float64,1}},
-			dumpFun::Function, resultsFilename::String, startFrom::Int64 = 1)
-Dc = 0;
-println("GLOBAL INX");
-flag = -1;
-println(inx)
-HIS = [];
-pFor = fetch(pMis[1]).pFor
-Z = copy(pFor.originalSources);
-nrec = size(pFor.Receivers, 2);
-sizeH = size(pFor.Ainv[1]);
-pFor = nothing
-nsrc = size(Z, 2);
-println("SIZE Z");
-println(size(Z));
-println("NSRC221");
-println(nsrc);
-for freqIdx = startFrom:nfreq
-	println("start freqCont Zs iteration from: ", freqIdx)
-	tstart = time_ns();
 
-	reqIdx1 = freqIdx;
-	if freqIdx > 1
-		reqIdx1 = max(1,freqIdx-windowSize+1);
-	end
-	reqIdx2 = freqIdx;
-	currentProblems = reqIdx1:reqIdx2;
-	println("\n======= New Continuation Stage: selecting continuation batches: ",reqIdx1," to ",reqIdx2,"=======\n");
+function minimizeZs(mc, currentProblems::UnitRange, HinvPs::Vector{Array},
+	sizeH::Tuple, pMis::Array{RemoteChannel}, nsrc::Integer, beta::Float64)
 	pMisTemp = pMis[currentProblems];
-	pInv.mref = mc[:];
+	println("ABCD3")
 
-	if resultsFilename == ""
-			filename = "";
-		else
-			Temp = splitext(resultsFilename);
-			filename = string(Temp[1],"_FC",freqIdx,"_GN",Temp[2]);
-	end
-	# Here we set a dump function for GN for this iteracion of FC
-	function dumpGN(mc,Dc,iter,pInv,PF)
-		dumpFun(mc,Dc,iter,pInv,PF,filename);
-	end
 	runningProcs = map(x->x.where, pMis[currentProblems]);
 
 	# pForCurrent = Array{RemoteChannel}(undef, numOfCurrentProblems);
@@ -371,7 +350,8 @@ for freqIdx = startFrom:nfreq
 		for worker in 1:nworkers()
 			@async begin
 				newSourcesp[worker] = initRemoteChannel(calculateZs, workers()[worker],
-				currentProblems, sizeH, pMisArr, worker:nworkers():nsrc);
+				currentProblems, sizeH, pMisArr, worker:nworkers():nsrc,
+				HinvPs[currentProblems], beta);
 			end
 		end
 	end
@@ -399,21 +379,82 @@ for freqIdx = startFrom:nfreq
 	s111 = time_ns();
 	println("FREQCONT ZS");
 	println((s111 - t111)/1.0e9);
+	return pMisTemp;
+end
+
+function freqContZs(mc, pInv::InverseParam, pMis::Array{RemoteChannel},nfreq::Int64, windowSize::Int64,
+	Iact,mback::Union{Vector,AbstractFloat,AbstractModel, Array{Float64,1}},
+			dumpFun::Function, resultsFilename::String, startFrom::Int64 = 1)
+# origGNIters = pInv.maxIter;
+# firstRun = 12;
+# pInv.maxIter = firstRun;
+Dc = 0;
+println("GLOBAL INX");
+flag = -1;
+println(inx)
+HIS = [];
+pFor = fetch(pMis[1]).pFor
+Z = copy(pFor.originalSources);
+nrec = size(pFor.Receivers, 2);
+sizeH = size(pFor.Ainv[1]);
+pFor = nothing
+nsrc = size(Z, 2);
+println("SIZE Z");
+println(size(Z));
+println("NSRC221");
+println(nsrc);
+HinvPs = Vector{Array}(undef, length(startFrom:nfreq));
+beta = 1e-8;
+for freqIdx = startFrom:nfreq
+	println("start freqCont Zs iteration from: ", freqIdx)
+	tstart = time_ns();
+	reqIdx1 = freqIdx;
+	if freqIdx > 1
+		reqIdx1 = max(1,freqIdx-windowSize+1);
+	end
+	reqIdx2 = freqIdx;
+	currentProblems = reqIdx1:reqIdx2;
+	println("\n======= New Continuation Stage: selecting continuation batches: ",reqIdx1," to ",reqIdx2,"=======\n");
+	pFor =  fetch(pMis[freqIdx]).pFor;
+	HinvPs[freqIdx] = (pFor.Ainv[1])' \ Matrix(pFor.Receivers);
+
 	# pMisTemp = getMisfitParam(pForCurrent, WdNew, pMis., SSDFun, Iact, mback);
 	# Zs =
 	# println("SOURCES, ", fetch(pMisTemp[1]).pFor.Sources)
-	mc,Dc,flag,His = projGN(mc,pInv,pMisTemp,dumpResults = dumpGN);
-	pMis[currentProblems] = pMisTemp;
-	clear!(pMisTemp);
+	# Here we set a dump function for GN for this iteracion of FC
+	pInv.mref = mc[:];
+
+	for j=1:5
+		if resultsFilename == ""
+				filename = "";
+			else
+				Temp = splitext(resultsFilename);
+				filename = string(Temp[1],"_FC",freqIdx,"_",j,"_GN",Temp[2]);
+		end
+
+		function dumpGN(mc,Dc,iter,pInv,PF)
+			dumpFun(mc,Dc,iter,pInv,PF,filename);
+		end
+
+		pMisTemp = minimizeZs(mc, currentProblems, HinvPs,sizeH, pMis, nsrc, beta);
+
+		mc,Dc,flag,His = projGN(mc,pInv,pMisTemp,dumpResults = dumpGN);
+
+
+		pMis[currentProblems] = pMisTemp;
+		clear!(pMisTemp);
+	end
+	beta *= 10;
 	tend = time_ns();
     println("Runtime of freqCont iteration: ");
     println((tend - tstart)/1.0e9);
 	global inx = inx + 1;
+	# pInv.maxIter = origGNIters;
 
 end
-for i in 1:nfreq
-	writedlm(string("sources", i), fetch(pMis[i]).pFor.Sources)
-end
+# for i in 1:nfreq
+# 	writedlm(string("sources", i), fetch(pMis[i]).pFor.Sources)
+# end
 return mc,Dc,flag,HIS;
 end
 

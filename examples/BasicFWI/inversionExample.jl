@@ -68,7 +68,7 @@ function startEx()
 	#Plot residuals
 	figure(23);
 	imshow((abs.(m.-fullMc))'); colorbar();
-	return pMis
+	return pMis;
 end
 
 
