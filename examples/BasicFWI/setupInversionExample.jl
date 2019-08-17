@@ -8,18 +8,20 @@ using Distributed
 using DelimitedFiles
 
 if nworkers() == 1
-	addprocs(4);
-elseif nworkers() < 4
-	addprocs(4 - nworkers());
+	addprocs(5);
+elseif nworkers() < 5
+	addprocs(5 - nworkers());
 end
 
 @everywhere begin
-	using jInvSeismic.BasicFWI
-	using jInv.Mesh
-	using jInv.Utils
-	using jInv.ForwardShare
-	using jInv.InverseSolve
-
+using jInv.InverseSolve
+using jInv.LinearSolvers
+using jInvSeismic.BasicFWI
+using jInv.Mesh
+using jInv.Utils
+using DelimitedFiles
+using jInv.ForwardShare
+end
 function readModelAndGenerateMeshMref(readModelFolder::String,modelFilename::String,dim::Int64,pad::Int64,domain::Vector{Float64},newSize::Vector=[],velBottom::Float64=0.0,velHigh::Float64=0.0)
 ########################## m,mref are in Velocity here. ###################################
 	m = readdlm(string(readModelFolder,"/",modelFilename));
@@ -86,5 +88,7 @@ nrec = size(P,2)
 pFor  = getBasicFWIparam(omega,gamma,Q,P,Mr)
 pForp = getBasicFWIparam(omega,gamma,Q,P,Mr,true)
 
+P = nothing
+Q = nothing
 # inversion mesh and forward mesh are the same here
 M2Mp = ones(length(pForp))

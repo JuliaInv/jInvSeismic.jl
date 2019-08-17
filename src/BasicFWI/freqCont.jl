@@ -1,6 +1,7 @@
 export freqContBasic;
 export freqContTraceEstimation;
 using jInv.InverseSolve
+using Printf
 
 """
 	function freqContBasic
@@ -64,11 +65,15 @@ function freqContZs(mc, pInv::InverseParam, pMis::Array{RemoteChannel},nfreq::In
 Dc = 0;
 flag = -1;
 HIS = [];
-Z = copy(fetch(pMis[1]).pFor.originalSources[:]);
-nrec = size(fetch(pMis[1]).pFor.Receivers, 2);
-sizeH = size(fetch(pMis[1]).pFor.Ainv[1]);
+pFor = fetch(pMis[1]).pFor
+Z = copy(pFor.originalSources);
+nrec = size(pFor.Receivers, 2);
+sizeH = size(pFor.Ainv[1]);
+pFor = nothing
 nsrc = size(Z, 1);
-println("NSRC");
+println("SIZE Z");
+println(size(Z));
+println("NSRC221");
 println(nsrc);
 for freqIdx = startFrom:nfreq
 	println("start freqCont Zs iteration from: ", freqIdx)
@@ -101,7 +106,8 @@ for freqIdx = startFrom:nfreq
 	t111 = time_ns();
 	for s=1:nsrc
 		A = sparse([],[],[],sizeH[1], sizeH[2]);
-		B = zeros(size(Z[:,s]));
+		# sizeZ = size(Z[:,s])
+		B = spzeros(nsrc);
 		for i=1:numOfCurrentProblems
 			pMisCur = fetch(pMisTemp[i]);
 			P = pMisCur.pFor.Receivers;
@@ -115,7 +121,7 @@ for freqIdx = startFrom:nfreq
 			println("LU CUR");
 			println(typeof(LUcur));
 			println(size(LUcur));
-			println("P ");
+			println("P 2");
 			println(typeof(P));
 			println(size(P));
 			# HinvP  = sparse([],[],ComplexF64[],size(P,1), size(P,2));
@@ -124,6 +130,13 @@ for freqIdx = startFrom:nfreq
 				println(r);
 				HinvP[:, r] = LUcur \ Vector(P[:,r]);
 			end
+			# HinvP = sparse(HinvP)
+
+			# sleep(120)
+			# A1 = sparse(HinvP) * WdSqr
+			# A2 = A1 * sprase(HinvP')
+
+			# A = A +  A2 + 2 * beta .* sparse(I,sizeH[1], sizeH[2]);
 			A = A + HinvP * WdSqr * HinvP' + 2 * beta .* I;
 			B = B + 2 * beta .* pMisCur.pFor.originalSources + WdSqr .* HinvP * pMisCur.dobs;
 			# Zs =

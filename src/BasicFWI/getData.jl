@@ -28,11 +28,9 @@ function getData(m,pFor::BasicFWIparam,doClear::Bool=false)
         t2 = time_ns();
         println("Runtime of helmholtz:");
         println((t1 - t2)/1.0e9);
-        println(size(H))
         LU[i] = lu(H)
-        println(size(LU[i]));
+        H = nothing
         for k=1:nsrc
-            println(size(Vector(Q[:,k])));
             U[:,k,i] = LU[i]\Vector(Q[:,k])
             D[:,k,i] = real(P'*U[:,k,i])
             # Ucur = LU[i]\Vector(Q[:,k]);
@@ -41,9 +39,20 @@ function getData(m,pFor::BasicFWIparam,doClear::Bool=false)
     end
     pFor.Ainv   = LU
     # pFor.Helmholtz = H
-    pFor.Fields = U
+    # pFor.Fields = U # will need to save to file
+    # writedlm(string(replace(string("U",omega[1]), "." => "_"),".mat"), U)
     tend = time_ns();
     println("Runtime of getData:");
     println((tend - tstart)/1.0e9);
+
+    #clear some memory on workers
+    LU = nothing
+    U = nothing
+    Q = nothing
+    P = nothing
+    omega = nothing
+    gamma = nothing
+    Mesh = nothing
+
     return D ,pFor
 end
