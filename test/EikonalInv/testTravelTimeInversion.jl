@@ -16,7 +16,6 @@ modelDir = "../examples";
 
 dataDir = pwd();
 include("../../examples/TravelTimeTomography/drivers/prepareTravelTimeDataFiles.jl");
-include("../../examples/TravelTimeTomography/drivers/readModelAndGenerateMeshMref.jl");
 include("../../examples/TravelTimeTomography/drivers/setupTravelTimeTomography.jl");
 
 ########################################################################################################

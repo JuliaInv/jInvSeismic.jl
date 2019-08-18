@@ -7,11 +7,10 @@ println("=======================================================================
 modelDir = "../examples/";
 dataDir = pwd();
 include("../../examples/FWI/drivers/prepareFWIDataFiles.jl");
-include("../../examples/FWI/drivers/readModelAndGenerateMeshMref.jl");
 
-const plotting = false;
+plotting = false;
 
-const realTesting = false;
+realTesting = false;
 
 if plotting
 	using jInvVis

@@ -1,8 +1,8 @@
-export freqCont;
+export freqContBasic;
 using jInv.InverseSolve
 
 """
-	function freqCont
+	function freqContBasic
 	Frequency continuation procedure for running FWI.
 	This function runs GaussNewton on misfit functions defined by pMis with nfreq frequencies.
 
@@ -16,7 +16,7 @@ using jInv.InverseSolve
 		startFrom   - a start index for the continuation. Usefull when our run broke in the middle of the iterations.
 
 """
-function freqCont(mc, pInv::InverseParam, pMis::Array{RemoteChannel},nfreq::Int64, windowSize::Int64,
+function freqContBasic(mc, pInv::InverseParam, pMis::Array{RemoteChannel},nfreq::Int64, windowSize::Int64,
 			dumpFun::Function,startFrom::Int64 = 1)
 Dc = 0;
 flag = -1;

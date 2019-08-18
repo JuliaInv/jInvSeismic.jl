@@ -1,6 +1,3 @@
-if nworkers()<=1
-	addprocs(1);
-end
 
 println("=======================================================================\n")
 println("===============  TestInversion using Julia solver   ===================\n");
@@ -12,7 +9,6 @@ modelDir ="../examples/";
 
 dataDir = pwd();
 include("../../examples/FWI/drivers/prepareFWIDataFiles.jl");
-include("../../examples/FWI/drivers/readModelAndGenerateMeshMref.jl");
 include("../../examples/FWI/drivers/setupFWI.jl");
 
 plotting = false;
@@ -96,7 +92,7 @@ mref 		= velocityToSlow(mref)[1];
 t    		= copy(boundsLow);
 boundsLow 	= velocityToSlow(boundsHigh)[1];
 boundsHigh 	= velocityToSlow(t)[1]; t = 0;
-modfun 		= slowToSlowSquared;
+modfun1		= slowToSlowSquared;
 
 ########################################################################################################
 # Set up Inversion #################################################################################
@@ -113,7 +109,7 @@ maxit = 2;
 
 HesPrec=getExactSolveRegularizationPreconditioner();
 
-pInv = getInverseParam(Minv,modfun,regfun,alpha,mref[:],boundsLow,boundsHigh,
+pInv = getInverseParam(Minv,modfun1,regfun,alpha,mref[:],boundsLow,boundsHigh,
                          maxStep=maxStep,pcgMaxIter=cgit,pcgTol=pcgTol,
 						 minUpdate=1e-3, maxIter = maxit,HesPrec=HesPrec);
 mc = copy(mref[:]);
@@ -136,7 +132,7 @@ relaxPost   = 2;
 cycleType   ='W';
 coarseSolveType = "NoMUMPS";
 MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.0,0.0);
-shift = 0.1;
+shift = 0.2;
 Hparam = HelmholtzParam(Minv,zeros(0),zeros(0),0.0,true,true);
 AinvMG = getShiftedLaplacianMultigridSolver(Hparam, MG,shift);
 
@@ -145,11 +141,11 @@ AinvMG = getShiftedLaplacianMultigridSolver(Hparam, MG,shift);
 (Q,P,pMis,SourcesSubInd,contDiv,Iact,sback,mref,boundsHigh,boundsLow,resultsFilename) = 
    setupFWI(m,dataFilenamePrefix,resultsFilenamePrefix,plotting,workersFWI,maxBatchSize,AinvMG,SSDFun);
 
-mref 		= velocityToSlow(mref)[1];
-t    		= copy(boundsLow);
-boundsLow 	= velocityToSlow(boundsHigh)[1];
-boundsHigh 	= velocityToSlow(t)[1]; t = 0;
-modfun 		= slowToSlowSquared;
+ mref 		= velocityToSlow(mref)[1];
+ # t    		= copy(boundsLow);
+ # boundsLow 	= velocityToSlow(boundsHigh)[1];
+ # boundsHigh 	= velocityToSlow(t)[1]; t = 0;
+ # modfun1 		= slowToSlowSquared;
 
 pInv.mref = mref[:];					 
 mc = copy(mref[:]);

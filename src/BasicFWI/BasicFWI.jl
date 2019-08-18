@@ -6,14 +6,14 @@ using SparseArrays
 using LinearAlgebra
 
 
-export FWIparam
+export BasicFWIparam
 import jInv.ForwardShare.ForwardProbType
 """
-	FWIparam <: ForwardProbType
+	BasicFWIparam <: ForwardProbType
 
 	type defining Full Waveform Inversion (FWI) problem.
 
-	Constructor: getFWIparam(omega,gamma,Q,P,Mesh)
+	Constructor: getBasicFWIparam(omega,gamma,Q,P,Mesh)
 
 	Fields:
 		omega     - frequencies
@@ -24,7 +24,7 @@ import jInv.ForwardShare.ForwardProbType
 		Fields    -
 		Ainv      - for linear solver, LU factorizations
 """
-mutable struct FWIparam <: ForwardProbType
+mutable struct BasicFWIparam <: ForwardProbType
     omega     # frequencies
     gamma     # attenuation
     Sources   # Sources
@@ -34,14 +34,14 @@ mutable struct FWIparam <: ForwardProbType
 	Ainv      # LU factorization
 end
 
-export getFWIparam
+export getBasicFWIparam
 """
-	pFor = getFWIparam(omega,gamma,Q,P,Mesh,doDistribute=false)
+	pFor = getBasicFWIparam(omega,gamma,Q,P,Mesh,doDistribute=false)
 
-	constructs FWI param
+	constructs BasicFWI param
 
 """
-function getFWIparam(omega,gamma,Q,P,Mesh,doDistribute=false)
+function getBasicFWIparam(omega,gamma,Q,P,Mesh,doDistribute=false)
     nfreq = length(omega)
 
     if doDistribute && (nfreq > 1)
@@ -62,7 +62,7 @@ function getFWIparam(omega,gamma,Q,P,Mesh,doDistribute=false)
                         if (idx>nfreq)
                             break
                         end
-                        pFor[idx] = initRemoteChannel(getFWIparam,p,omega[idx],gamma,Q,P,Mesh)
+                        pFor[idx] = initRemoteChannel(getBasicFWIparam,p,omega[idx],gamma,Q,P,Mesh)
                         nprobs[p] +=1
                         wait(pFor[idx])
                     end
@@ -70,7 +70,7 @@ function getFWIparam(omega,gamma,Q,P,Mesh,doDistribute=false)
             end
         end
     else
-        pFor = FWIparam(omega,gamma,Q,P,Mesh,[],[])
+        pFor = BasicFWIparam(omega,gamma,Q,P,Mesh,[],[])
     end
     return pFor
 end

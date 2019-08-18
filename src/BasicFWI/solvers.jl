@@ -43,7 +43,7 @@ function solveInverseProblem(pForp::Array{RemoteChannel}, Dobs::Array, Wd::Array
 	## Choose the workers for FWI (here, its a single worker)
 	misfun = SSDFun;
 	pMis = Array{MisfitParam}(undef, nfreq);
-	pForFreq = Array{FWIparam}(undef, nfreq);
+	pForFreq = Array{BasicFWIparam}(undef, nfreq);
 
 	probsMax = ceil(Integer,nfreq/nworkers());
 	nprobs   = zeros(maximum(workers()));
@@ -78,6 +78,6 @@ function solveInverseProblem(pForp::Array{RemoteChannel}, Dobs::Array, Wd::Array
 	 end
 
 	# Run one sweep of a frequency continuation procedure.
-	mc, Dc = freqCont(copy(mref[:]), pInv, pMis, nfreq, 4, plotIntermediateResults,1);
+	mc, Dc = freqContBasic(copy(mref[:]), pInv, pMis, nfreq, 4, plotIntermediateResults,1);
 	return mc, Dc, pInv, Iact, mback;
 end

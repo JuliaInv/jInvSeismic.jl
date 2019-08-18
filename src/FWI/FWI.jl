@@ -75,7 +75,7 @@ function getFWIparam(omega::Array{Float64}, WaveletCoef::Array{ComplexF64},gamma
 			warn("FWI: workerList included indices of non-existing workers.")
 		end
 	end
-	numWorkers = length(ActualWorkers);
+	numWorkers = length(ActualWorkers); 
 	pFor   = Array{RemoteChannel}(undef,numWorkers*length(omega));
 	SourcesSubInd = Array{Array{Int64,1}}(undef,numWorkers*length(omega));
 	for k=1:length(omega)

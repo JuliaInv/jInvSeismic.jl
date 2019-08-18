@@ -1,6 +1,6 @@
 import jInv.ForwardShare.getSensMatVec
 
-function getSensMatVec(v::Vector,m::Vector,pFor::FWIparam)
+function getSensMatVec(v::Vector,m::Vector,pFor::BasicFWIparam)
 
     # extract pointers
     Mesh  = pFor.Mesh

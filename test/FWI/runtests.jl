@@ -1,6 +1,6 @@
 using Distributed
-if nworkers()<2
-	addprocs(3-nworkers())
+if nworkers()==1
+	addprocs(1)
 end
 using SparseArrays
 using LinearAlgebra
@@ -18,12 +18,9 @@ using Multigrid
 using Statistics
 using MAT
 using DelimitedFiles
-
-
-
 using Test
 
-#include("testGetData.jl")
-#include("testSensitivity.jl")
-#include("testInversion.jl")
+include("testGetData.jl")
+include("testSensitivity.jl")
+include("testInversion.jl")
 include("testTimeDomain.jl")

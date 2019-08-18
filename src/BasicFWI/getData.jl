@@ -1,7 +1,7 @@
 export getData
 
 import jInv.ForwardShare.getData
-function getData(m,pFor::FWIparam,doClear::Bool=false)
+function getData(m,pFor::BasicFWIparam,doClear::Bool=false)
 
     # extract pointers
     Mesh  = pFor.Mesh

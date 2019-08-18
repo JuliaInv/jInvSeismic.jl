@@ -1,11 +1,4 @@
 
-
-
-
-
-
-
-
 # get a small mesh
 domain = [0 2.0 0 2.2]
 n      = [12;8;]
@@ -28,16 +21,16 @@ dlo, = getData(vec(m0),pFor)
 @test norm(dho-dlo)/norm(dho) < 0.05
 
 # parallelize over sources
-pForp,continuationDivision,SourcesSubInd = getEikonalInvParam(M,Q,R,true,4)
+pForp,continuationDivision,SourcesSubInd = getEikonalInvParam(M,Q,R,true,nworkers())
 dphor, = getData(vec(m0),pForp)
 dpho = zeros(size(dho))
-for k=1:4
+for k=1:length(dphor)
 	dpho[:,SourcesSubInd[k]] = fetch(dphor[k])
 end
-pForp,continuationDivision,SourcesSubInd = getEikonalInvParam(M,Q,R,false,4)
+pForp,continuationDivision,SourcesSubInd = getEikonalInvParam(M,Q,R,false,nworkers())
 dplor, = getData(vec(m0),pForp)
 dplo = zeros(size(dho))
-for k=1:4
+for k=1:length(dplor)
 	dplo[:,SourcesSubInd[k]] = fetch(dplor[k])
 end
 

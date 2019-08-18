@@ -20,13 +20,13 @@ R      = copy(Q)
 
 # get param without parallelizaion
 ABLpad = 2;
-gamma = getABL(M,true,ones(Int64,M.dim)*ABLpad,8*pi);
+gamma = Helmholtz.getABL(M,true,ones(Int64,M.dim)*ABLpad,8*pi);
 attenuation = 0.01*4*pi;
 gamma .+= attenuation; # adding Attenuation.
 gamma = gamma[:];
 Ainv = getJuliaSolver();
 
-pFor = getFWIparam(omega, one(ComplexF64),gamma,Q,R,M,Ainv,[workers()[1]])[1];
+pFor = FWI.getFWIparam(omega, one(ComplexF64),gamma,Q,R,M,Ainv,[workers()[1]])[1];
 
 m0   = rand(Float64,tuple(n.+1...)).+1.0
 dobs, = getData(vec(m0),fetch(pFor[1]));

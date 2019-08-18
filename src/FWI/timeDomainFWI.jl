@@ -95,7 +95,7 @@ for k = 1:nsrc
 	u_im1[:] .= 0.0;
 	u_i[:] .= 0.0;
 end
-println("time domain get data took ",(tt-time_ns())/(1e+9)," seconds.");
+println("time domain get data took ",(tt-time_ns())/1e+9," seconds.");
 
 return D,pFor
 end

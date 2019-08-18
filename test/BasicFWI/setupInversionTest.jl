@@ -7,10 +7,6 @@ using Distributed
 
 using DelimitedFiles
 
-if nworkers()==1
-	addprocs(1)
-end
-
 @everywhere begin
 	using jInvSeismic.BasicFWI
 	using jInv.Mesh
@@ -34,7 +30,7 @@ m = 1.0./(m.^2); # convert to slowness squared
 padx = 20; padz = 20
 a    = 2.0;
 xc = getCellCenteredGrid(Mr)
-gamma = getABL(Mr,true,[padx;padz],a);
+gamma = getHelmholtzABL(Mr,true,[padx;padz],a);
 
 # parameters for the Helmholtz (units in km)
 h = Mr.h;
@@ -54,8 +50,8 @@ P = sdiag(vec(p))
 P = P[:,(LinearIndices(sum(P,dims=2) .!= 0))[findall(sum(P,dims=2) .!= 0)]]
 nrec = size(P,2)
 
-pFor  = getFWIparam(omega,gamma,Q,P,Mr)
-pForp = getFWIparam(omega,gamma,Q,P,Mr,true)
+pFor  = getBasicFWIparam(omega,gamma,Q,P,Mr)
+pForp = getBasicFWIparam(omega,gamma,Q,P,Mr,true)
 
 # inversion mesh and forward mesh are the same here
 M2Mp = ones(length(pForp))

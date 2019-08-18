@@ -1,7 +1,7 @@
 
 using Distributed
-if nworkers()<4
-	addprocs(5-nworkers())
+if nworkers()<2
+	addprocs(2-nworkers())
 end
 
 using Test

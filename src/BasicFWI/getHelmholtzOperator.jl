@@ -1,4 +1,4 @@
-export getHelmholtzOperator, getABL
+export getHelmholtzOperator, getHelmholtzABL
 
 """
 	H = getHelmholtzOperator(m,gamma,omega,Mesh)
@@ -25,7 +25,7 @@ return H
 end
 
 
-function getABL(Msh::RegularMesh,NeumannAtFirstDim::Bool,ABLpad::Array{Int64},ABLamp::Float64)
+function getHelmholtzABL(Msh::RegularMesh,NeumannAtFirstDim::Bool,ABLpad::Array{Int64},ABLamp::Float64)
   h = Msh.h;
   n = Msh.n;
   pad = ABLpad;
