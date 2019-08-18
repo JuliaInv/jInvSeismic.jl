@@ -141,12 +141,7 @@ AinvMG = getShiftedLaplacianMultigridSolver(Hparam, MG,shift);
 (Q,P,pMis,SourcesSubInd,contDiv,Iact,sback,mref,boundsHigh,boundsLow,resultsFilename) = 
    setupFWI(m,dataFilenamePrefix,resultsFilenamePrefix,plotting,workersFWI,maxBatchSize,AinvMG,SSDFun);
 
- mref 		= velocityToSlow(mref)[1];
- # t    		= copy(boundsLow);
- # boundsLow 	= velocityToSlow(boundsHigh)[1];
- # boundsHigh 	= velocityToSlow(t)[1]; t = 0;
- # modfun1 		= slowToSlowSquared;
-
+mref 		= velocityToSlow(mref)[1]; 
 pInv.mref = mref[:];					 
 mc = copy(mref[:]);
 
