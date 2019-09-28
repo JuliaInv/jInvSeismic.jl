@@ -6,7 +6,13 @@ import jInv.Utils.clear!
 include("setupInversionExample.jl");
 
 close("all")
-
+function aa()
+	global m=12
+end
+# global g =13;
+function z()
+	println(m);
+end
 function startEx()
 	tstart = time_ns();
 
@@ -17,7 +23,7 @@ function startEx()
 		figure(21);
 		imshow(reshape(gamma,tuple(size(m)...))');
 	end
-	# plotInputData();
+	plotInputData();
 
 	Dobs, Wd = solveForwardProblem(m, pForp, omega, nrec, nsrc, nfreq);
 	# etaM = 2 .*diagm(0 => vec(Wd[1][:,1])).*diagm(0 => vec(Wd[1][:,1]));
@@ -44,8 +50,12 @@ function startEx()
 	figure(22);
 	imshow(mref'); colorbar();
 
-	mc, Dc, pInv, Iact, mback = solveInverseProblemZs(pForp, Dobs, Wd, nfreq, nx, nz, mref,
-								Mr, 0.5, 0.035,"TE_FWI.dat", false, plotModelResult);
+	mc, Dc, pInv, Iact, mback, pMis = solveInverseProblemZs(pForp, Dobs, Wd, nfreq, nx, nz, mref,
+								Mr, 0.5, 0.035,"ES_FWI.dat", true, plotModelResult);
+
+
+	# mc, Dc, pInv, Iact, mback = solveInverseProblem(pForp, Dobs, Wd, nfreq, nx, nz, mref,
+	# 							Mr, 0.5, 0.035,"ES_FWI.dat", true, plotModelResult);
 
 	# Show results
 	fullMc = reshape(Iact*pInv.modelfun(mc)[1] + mback,tuple((pInv.MInv.n)...));
@@ -58,7 +68,9 @@ function startEx()
 	#Plot residuals
 	figure(23);
 	imshow((abs.(m.-fullMc))'); colorbar();
+	return pMis
 end
 
 
-startEx()
+pMis= startEx()
+# pMis[1].pFor.Sources[10,1] = 8

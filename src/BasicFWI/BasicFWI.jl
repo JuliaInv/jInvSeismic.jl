@@ -5,6 +5,7 @@ using Distributed
 using SparseArrays
 using LinearAlgebra
 using DelimitedFiles
+using Statistics
 
 export BasicFWIparam
 import jInv.ForwardShare.ForwardProbType
@@ -35,6 +36,7 @@ mutable struct BasicFWIparam <: ForwardProbType
 	Ainv      # LU factorization
 	originalSources	  # sources before trace estimation
 	ExtendedSources
+	# HinvtPs
 end
 
 export getBasicFWIparam
@@ -73,7 +75,7 @@ function getBasicFWIparam(omega,gamma,Q,P,Mesh,doDistribute=false)
             end
         end
     else
-        pFor = BasicFWIparam(omega,gamma,Q,P,Mesh,[],[],Q,Q)
+        pFor = BasicFWIparam(omega,gamma,Q,P,Mesh,[],[],copy(Q),copy(Q))
     end
     return pFor
 end

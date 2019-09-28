@@ -1,6 +1,9 @@
 using jInv.InverseSolve
 using jInv.LinearSolvers
 using Statistics
+using jInv.Utils
+using Distributed
+
 
 export solveForwardProblem
 function solveForwardProblem(m::Array{Float64, 2}, pForp::Array{RemoteChannel}, omega::Vector, nrec::Int64,
@@ -24,7 +27,7 @@ function solveForwardProblem(m::Array{Float64, 2}, pForp::Array{RemoteChannel}, 
 end
 
 export solveForwardProblemNoProcs
-function solveForwardProblemNoProcs(m::Array{Float64, 2}, pFor::FWIparam, omega::Vector, nrec::Int64,
+function solveForwardProblemNoProcs(m::Array{Float64, 2}, pFor::BasicFWIparam, omega::Vector, nrec::Int64,
 	nsrc::Int64, nfreq::Int64)
 	Dp,pFor = getData(vec(m),pFor)
 	nfreq = length(omega);
@@ -92,14 +95,13 @@ function solveInverseProblemZs(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Arra
 	nfreq::Int64, nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
 	boundsHigh::Float64, boundsLow::Float64, resultsFilename::String, plotting::Bool=false,
 	plottingFunc::Function=dummy)
-
 	pInv, pMis, plotIntermediateResults, Iact, mback = getFreqContParams(pFor, Dobs, Wd, nfreq, nx, nz, mref, Mr,
 		boundsHigh, boundsLow, plotting, plottingFunc);
 
 	# Run one sweep of a frequency continuation procedure.
 	mc, Dc = freqContZs(copy(mref[:]), pInv, pMis, nfreq, 4,Iact,mback, plotIntermediateResults, resultsFilename, 1);
 
-	return mc, Dc, pInv, Iact, mback;
+	return mc, Dc, pInv, Iact, mback, map(x->fetch(x), pMis);
 end
 
 
@@ -113,7 +115,7 @@ function solveInverseProblem(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
 		boundsHigh, boundsLow, plotting, plottingFunc);
 
 	# Run one sweep of a frequency continuation procedure.
-	mc, Dc = freqCont(copy(mref[:]), pInv, pMis, nfreq, 4, plotIntermediateResults, resultsFilename, 1);
+	mc, Dc = freqContBasic(copy(mref[:]), pInv, pMis, nfreq, 4, plotIntermediateResults, resultsFilename, 1);
 
 	return mc, Dc, pInv, Iact, mback;
 end
@@ -135,7 +137,7 @@ function solveInverseProblemTraceEstimation(pFor::Array{RemoteChannel}, Dobs::Ar
 end
 
 export solveInverseProblemNoProcs
-function solveInverseProblemNoProcs(pFor::FWIparam, Dobs::Array, Wd::Array, nfreq::Int64,
+function solveInverseProblemNoProcs(pFor::BasicFWIparam, Dobs::Array, Wd::Array, nfreq::Int64,
 	nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
 	boundsHigh::Float64, boundsLow::Float64, plotting::Bool=false, plottingFunc::Function=dummy)
 	N = prod(Mr.n);

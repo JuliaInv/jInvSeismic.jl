@@ -26,16 +26,21 @@ function getSensTMatVec(v::Vector,m::Vector,pFor::BasicFWIparam)
     for i=1:nfreq
         tf1=time_ns();
         Lam  = LU[i]\(P*v[:,:,i])
+        # println(size(An2cc))
+        # println(size(Lam))
+        # println(size(U[:,:,i]))
+        # println(size(dM))
+        # println(size(omega[i]))
         JTvi =  omega[i]^2*dM.*(An2cc*(U[:,:,i].*Lam))
         JTv +=  sum(real(JTvi),dims=2)
         tf2=time_ns();
-        println("Runtime of sensT freq:");
-        println((tf1 - tf2)/1.0e9);
+        # println("Runtime of sensT freq:");
+        # println((tf1 - tf2)/1.0e9);
     end
     return vec(JTv)
 end
 
-function getSensTMatVecZs(v::Vector,m::Vector,pFor::FWIparam)
+function getSensTMatVecZs(v::Vector,m::Vector,pFor::BasicFWIparam)
 
         # extract pointers
         Mesh  = pFor.Mesh
@@ -64,12 +69,12 @@ function getSensTMatVecZs(v::Vector,m::Vector,pFor::FWIparam)
                 Lam  = LU[i]\(P*v[:,s,i])
                 JTv += omega[i]^2*dM.*(An2cc*((LU[i]\Vector(Q[:,s])).*Lam))[:,1];
                 t2 = time_ns();
-                println("Runtime of sensT iteration:");
-                println((t1 - t2)/1.0e9);
+                # println("Runtime of sensT iteration:");
+                # println((t1 - t2)/1.0e9);
             end
             tf2=time_ns();
-            println("Runtime of sensT freq:");
-            println((tf1 - tf2)/1.0e9);
+            # println("Runtime of sensT freq:");
+            # println((tf1 - tf2)/1.0e9);
 
         end
         return vec(JTv)
