@@ -256,7 +256,7 @@ end
 
 function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	pMisArr::Array{MisfitParam}, s::Int64, HinvPs::Vector{Array}, beta::Float64)
-	recvSize = size(pMisArr[1].pFor.Receivers)
+	recvSize = size(pMisArr[1].pFor.Receivers, writeSource::Function)
 
 	# sizeZ = size(Z[:,s])
 	println("staring")
@@ -315,24 +315,26 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	println("SZ:",size(newSource))
 	# newSource = jacobi(beta, sizeH, numOfCurrentProblems, pMisArr, s, 20);
 	# println(nor)
-	writedlm(string("Ns", s, "_", inx), newSource)
+	writeSource(newSource, s);
+	# writedlm(string("Ns", s, "_", inx), newSource)
 	return newSource
 	# return pMisCurAll;
 end
 function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	pMisArr::Array{MisfitParam}, indexes::StepRange, HinvPs::Vector{Array},
-	beta::Float64)
+	beta::Float64, writeSource::Function)
 	newSources = Array{Array}(undef, size(indexes))
 	println(inx);
 	for (i, s) in enumerate(indexes)
 		newSources[i] = calculateZs(currentProblems, sizeH, pMisArr, s, HinvPs,
-		beta);
+		beta, writeSource);
 	end
 	return newSources;
 end
 
 function minimizeZs(mc, currentProblems::UnitRange, HinvPs::Vector{Array},
-	sizeH::Tuple, pMis::Array{RemoteChannel}, nsrc::Integer, beta::Float64)
+	sizeH::Tuple, pMis::Array{RemoteChannel}, nsrc::Integer, beta::Float64,
+	writeSource::Function)
 	pMisTemp = pMis[currentProblems];
 	println("ABCD3")
 
@@ -351,7 +353,7 @@ function minimizeZs(mc, currentProblems::UnitRange, HinvPs::Vector{Array},
 			@async begin
 				newSourcesp[worker] = initRemoteChannel(calculateZs, workers()[worker],
 				currentProblems, sizeH, pMisArr, worker:nworkers():nsrc,
-				HinvPs[currentProblems], beta);
+				HinvPs[currentProblems], beta, writeSource);
 			end
 		end
 	end
@@ -369,9 +371,10 @@ function minimizeZs(mc, currentProblems::UnitRange, HinvPs::Vector{Array},
 		# println(size(newSource));
 		for s=1:nsrc
 			pMisArr[i].pFor.Sources[:, s] = newSources[(s - 1) % nworkers() + 1][floor(Int64, (s - 1) / nworkers()) + 1];
+			# writeSource(pMisArr[i].pFor.Sources[:, s], s);
 		end
 			# println("AFTER22");
-		writedlm(string("Src", i), pMisArr[i].pFor.Sources)
+		# writedlm(string("Src", i), pMisArr[i].pFor.Sources)
 		pMisTemp[i] = initRemoteChannel(x->x, runningProcs[i], pMisArr[i]);
 		# pMis[currentProblems] = pMisTemp;
 	end
@@ -404,7 +407,7 @@ println(size(Z));
 println("NSRC221");
 println(nsrc);
 HinvPs = Vector{Array}(undef, length(startFrom:nfreq));
-beta = 1e-8;
+beta = 1e-5;
 for freqIdx = startFrom:nfreq
 	println("start freqCont Zs iteration from: ", freqIdx)
 	tstart = time_ns();
@@ -416,15 +419,18 @@ for freqIdx = startFrom:nfreq
 	currentProblems = reqIdx1:reqIdx2;
 	println("\n======= New Continuation Stage: selecting continuation batches: ",reqIdx1," to ",reqIdx2,"=======\n");
 	pFor =  fetch(pMis[freqIdx]).pFor;
-	HinvPs[freqIdx] = (pFor.Ainv[1])' \ Matrix(pFor.Receivers);
 
-	# pMisTemp = getMisfitParam(pForCurrent, WdNew, pMis., SSDFun, Iact, mback);
-	# Zs =
-	# println("SOURCES, ", fetch(pMisTemp[1]).pFor.Sources)
-	# Here we set a dump function for GN for this iteracion of FC
-	pInv.mref = mc[:];
 
 	for j=1:5
+
+		for freqs = startFrom:freqIdx
+			HinvPs[freqs] = (fetch(pMis[freqs]).pFor.Ainv[1])' \ Matrix(pFor.Receivers);
+			println("HINVP done");
+			# pMisTemp = getMisfitParam(pForCurrent, WdNew, pMis., SSDFun, Iact, mback);
+			# Zs =
+			# println("SOURCES, ", fetch(pMisTemp[1]).pFor.Sources)
+			# Here we set a dump function for GN for this iteracion of FC
+		end
 		if resultsFilename == ""
 				filename = "";
 			else
@@ -436,8 +442,15 @@ for freqIdx = startFrom:nfreq
 			dumpFun(mc,Dc,iter,pInv,PF,filename);
 		end
 
-		pMisTemp = minimizeZs(mc, currentProblems, HinvPs,sizeH, pMis, nsrc, beta);
+		function writeSource(source, sourceIdx)
+			writedlm(string("Ns", sourceIdx, "_GN", j, "_FC", freqIdx), source)
+		end
 
+
+		pMisTemp = minimizeZs(mc, currentProblems, HinvPs,sizeH, pMis, nsrc, beta,
+		writeSource);
+		
+		pInv.mref = mc[:];
 		mc,Dc,flag,His = projGN(mc,pInv,pMisTemp,dumpResults = dumpGN);
 
 
