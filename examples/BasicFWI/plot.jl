@@ -3,6 +3,6 @@ using jInvVis
 using PyPlot
 
 
-m = DelimitedFiles.readdlm("ORIG_FWI_FC1_GN5.dat");
+m = DelimitedFiles.readdlm("ES_FWI_FC5_5_GN1.dat");
 
 imshow(m'); colorbar();

@@ -255,8 +255,9 @@ function jacobi(beta::Float64, sizeH::Tuple, numOfCurrentProblems::Int64,
 end
 
 function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
-	pMisArr::Array{MisfitParam}, s::Int64, HinvPs::Vector{Array}, beta::Float64)
-	recvSize = size(pMisArr[1].pFor.Receivers, writeSource::Function)
+	pMisArr::Array{MisfitParam}, s::Int64, HinvPs::Vector{Array}, beta::Float64,
+	writeSource::Function)
+	recvSize = size(pMisArr[1].pFor.Receivers)
 
 	# sizeZ = size(Z[:,s])
 	println("staring")
@@ -370,7 +371,7 @@ function minimizeZs(mc, currentProblems::UnitRange, HinvPs::Vector{Array},
 		# println("A/B");
 		# println(size(newSource));
 		for s=1:nsrc
-			pMisArr[i].pFor.Sources[:, s] = newSources[(s - 1) % nworkers() + 1][floor(Int64, (s - 1) / nworkers()) + 1];
+			pMisArr[i].pFor.ExtendedSources[:, s] = newSources[(s - 1) % nworkers() + 1][floor(Int64, (s - 1) / nworkers()) + 1];
 			# writeSource(pMisArr[i].pFor.Sources[:, s], s);
 		end
 			# println("AFTER22");
@@ -407,7 +408,7 @@ println(size(Z));
 println("NSRC221");
 println(nsrc);
 HinvPs = Vector{Array}(undef, length(startFrom:nfreq));
-beta = 1e-5;
+beta = 1e5;
 for freqIdx = startFrom:nfreq
 	println("start freqCont Zs iteration from: ", freqIdx)
 	tstart = time_ns();
@@ -417,6 +418,7 @@ for freqIdx = startFrom:nfreq
 	end
 	reqIdx2 = freqIdx;
 	currentProblems = reqIdx1:reqIdx2;
+	numOfCurrentProblems = size(currentProblems, 1);
 	println("\n======= New Continuation Stage: selecting continuation batches: ",reqIdx1," to ",reqIdx2,"=======\n");
 	pFor =  fetch(pMis[freqIdx]).pFor;
 
@@ -443,15 +445,72 @@ for freqIdx = startFrom:nfreq
 		end
 
 		function writeSource(source, sourceIdx)
-			writedlm(string("Ns", sourceIdx, "_GN", j, "_FC", freqIdx), source)
+			if sourceIdx < 10
+				writedlm(string("Ns", sourceIdx, "_GN", j, "_FC", freqIdx), source)
+			end
 		end
-
 
 		pMisTemp = minimizeZs(mc, currentProblems, HinvPs,sizeH, pMis, nsrc, beta,
 		writeSource);
-		
+
+
+
+
+
+		runningProcs = map(x->x.where, pMisTemp);
+		pMisCurrent = map(fetch, pMisTemp);
+		pForpCurrent =  map(x->x.pFor, pMisCurrent);
+		eta = 20.0;
+		Dobs = map(x->x.dobs[:,:], pMisCurrent);
+		Wd = map(x->x.Wd[:,:], pMisCurrent);
+		DobsNew = copy(Dobs[:]);
+		nsrc = size(DobsNew[1],2);
+		TEmat = rand([-1,1],(nsrc,10));
+		WdEta = eta.*Wd;
+		DpNew, = getData(vec(mc),pForpCurrent);
+		DobsTemp = Array{Array}(undef, numOfCurrentProblems);
+		WdNew = Array{Array}(undef, numOfCurrentProblems);
+		for i=1:numOfCurrentProblems
+			DobsTemp[i] = fetch(DpNew[i]);
+			for s=1:nsrc
+				etaM1 = 2 .*diagm(0 => vec(Wd[1][:,1])).*diagm(0 => vec(Wd[1][:,1]));
+				println("SIZE OLD ETAM: ");
+				println(size(etaM1));
+				etaM = 2 * eta .*diagm(0 => vec(Wd[i][:,s])).*diagm(0 => vec(Wd[i][:,s]));
+				println("SIZE NEW ETAM: ");
+				println(size(etaM));
+				A = (2 .*I + etaM)
+				b = (etaM)*(A\Dobs[i][:,s])
+				DobsNew[i][:,s] = 2 .* (A\DobsTemp[i][:,s]) + b;
+			end
+			DobsNew[i] = DobsNew[i][:,:] * TEmat;
+			WdNew[i] = ones((size(DobsNew[i], 1), 10))./sqrt(10);
+			println("SIZE OLD WD: ");
+			println(size(WdNew[i]));
+			WdNew[i] = 1.0./(abs.(real.(DobsNew[i])) .+ 1e-1*mean(abs.(DobsNew[i])));
+			WdNew[i] = WdNew[i] ./ sqrt(10);
+			println("SIZE NEW WD: ");
+			println(size(WdNew[i]));
+		end
+
+		pForCurrent = Array{RemoteChannel}(undef, numOfCurrentProblems);
+		for i=1:numOfCurrentProblems
+			pForTemp = pForpCurrent[i];
+			pForTemp.Sources = pForTemp.ExtendedSources * TEmat;
+			pForCurrent[i] = initRemoteChannel(x->x, runningProcs[i], pForTemp);
+		end
+
+
+		pMisTemp2 = getMisfitParam(pForCurrent, WdNew, DobsNew, SSDFun, Iact, mback);
+
+		println("size of exsources:" , size(fetch(pMisTemp2[1]).pFor.Sources));
+
+
+
+
+
 		pInv.mref = mc[:];
-		mc,Dc,flag,His = projGN(mc,pInv,pMisTemp,dumpResults = dumpGN);
+		mc,Dc,flag,His = projGN(mc,pInv,pMisTemp2,dumpResults = dumpGN);
 
 
 		pMis[currentProblems] = pMisTemp;
