@@ -60,7 +60,7 @@ return mc,Dc,flag,HIS;
 end
 
 """
-Ap, diag are matrices such that diag is diagonal and ASum(Ap(i)*diag(i)*Ap(i)^T)
+Ap, diag are matrices such that diag is diagonal and A = Sum(Ap(i)*diag(i)*Ap(i)^T)
 calculates x where Ax=b, relevant when A is too big to save in memory
 """
 function conjGradEx(beta::Float64, Ap::Vector{Matrix}, diags::Vector{SparseMatrixCSC},
@@ -260,14 +260,16 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	recvSize = size(pMisArr[1].pFor.Receivers)
 
 	# sizeZ = size(Z[:,s])
-	println("staring")
+	println("starting: ", s);
+
 	numOfCurrentProblems = size(currentProblems, 1);
 	# println("SIZE A;:", size(Ap))
 	Ap = Vector{Matrix}(undef, numOfCurrentProblems);
 	diags = Vector{SparseMatrixCSC}(undef, numOfCurrentProblems);
 	B = Vector{Vector}(undef, numOfCurrentProblems);
-	# ref = Vector(pMisArr[1].pFor.Sources[:,s])
-	ref = zeros(sizeH[1])
+	ref = Vector(pMisArr[1].pFor.Sources[:,s]) +  rand(sizeH[1]) * 100;
+	# ref = zeros(sizeH[1])
+	# ref = rand(sizeH[1]) * 1000;
 	# beta = 1e-8;
 	# # A = zeros(sizeH[1], sizeH[2]);
 	# # Bs = zeros(sizeH[1]);
@@ -291,6 +293,8 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 		B[i] =  real(2 * beta .* pMisArr[i].pFor.originalSources[:, s] +  HinvPs[i] * WdSqr * pMisArr[i].dobs[:,s,1]);
 		# Bs = Bs + 2 * beta .* pMisArr[i].pFor.originalSources[:, s] +  HinvP * WdSqr * pMisArr[i].dobs[:,s,1];
 	end
+
+
 	println("AABBB");
 	# writedlm(string("B_",s), PB);
 	# for i = 1:numOfCurrentProblems
@@ -312,11 +316,25 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	# writedlm(string("B", s, "_", inx), Bs)
 	# writedlm(string("Aq", s, "_", inx), A[:, :])
 	# newSource = real(A\Vector(Bs));
-	newSource = conjGradEx(beta, Ap, diags, B, sizeH[1], ref, 6);
+	newSource = conjGradEx(beta, Ap, diags, B, sizeH[1], ref, 16);
 	println("SZ:",size(newSource))
 	# newSource = jacobi(beta, sizeH, numOfCurrentProblems, pMisArr, s, 20);
 	# println(nor)
 	writeSource(newSource, s);
+
+
+	sumZs = 0;
+	sumQs = 0;
+	for i=1:numOfCurrentProblems
+		WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
+		sumZs += norm(WdSqr * (HinvPs[i]' * newSource -  pMisArr[i].dobs[:,s,1]));
+		sumQs +=  norm(WdSqr * (HinvPs[i]' * pMisArr[i].pFor.originalSources[:, s] -  pMisArr[i].dobs[:,s,1]));
+	end
+
+	println("norm with Zs:" , s, "is :", sumZs);
+	println("norm with Qs:" , s, "is :", sumQs);
+
+
 	# writedlm(string("Ns", s, "_", inx), newSource)
 	return newSource
 	# return pMisCurAll;
@@ -371,7 +389,8 @@ function minimizeZs(mc, currentProblems::UnitRange, HinvPs::Vector{Array},
 		# println("A/B");
 		# println(size(newSource));
 		for s=1:nsrc
-			pMisArr[i].pFor.ExtendedSources[:, s] = newSources[(s - 1) % nworkers() + 1][floor(Int64, (s - 1) / nworkers()) + 1];
+			# pMisArr[i].pFor.ExtendedSources[:, s] = newSources[(s - 1) % nworkers() + 1][floor(Int64, (s - 1) / nworkers()) + 1];
+			pMisArr[i].pFor.Sources[:, s] = newSources[(s - 1) % nworkers() + 1][floor(Int64, (s - 1) / nworkers()) + 1];
 			# writeSource(pMisArr[i].pFor.Sources[:, s], s);
 		end
 			# println("AFTER22");
@@ -408,7 +427,7 @@ println(size(Z));
 println("NSRC221");
 println(nsrc);
 HinvPs = Vector{Array}(undef, length(startFrom:nfreq));
-beta = 1e5;
+beta = 1e-10;
 for freqIdx = startFrom:nfreq
 	println("start freqCont Zs iteration from: ", freqIdx)
 	tstart = time_ns();
@@ -425,14 +444,30 @@ for freqIdx = startFrom:nfreq
 
 	for j=1:5
 
+		fetchedPMis = Vector{MisfitParam}(undef, length(startFrom:freqIdx));
 		for freqs = startFrom:freqIdx
-			HinvPs[freqs] = (fetch(pMis[freqs]).pFor.Ainv[1])' \ Matrix(pFor.Receivers);
+			fetchedPMis[freqs] = fetch(pMis[freqs]);
+			HinvPs[freqs] = (fetchedPMis[freqs].pFor.Ainv[1])' \ Matrix(pFor.Receivers);
+
 			println("HINVP done");
 			# pMisTemp = getMisfitParam(pForCurrent, WdNew, pMis., SSDFun, Iact, mback);
 			# Zs =
 			# println("SOURCES, ", fetch(pMisTemp[1]).pFor.Sources)
 			# Here we set a dump function for GN for this iteracion of FC
 		end
+
+		sumMs = 0;
+
+		for ix1 = startFrom:freqIdx
+			println(nsrc);
+			for s = 1:nsrc
+				s=1;
+				pMisCC = fetchedPMis[ix1];
+				WdSqr = 2 .*diagm(0 => vec(pMisCC.Wd[:,s])).*diagm(0 => vec(pMisCC.Wd[:,s]));
+				sumMs +=  norm(WdSqr * (HinvPs[ix1]' * pMisCC.pFor.originalSources[:, s] -  pMisCC.dobs[:,s,1]));
+			end
+		end
+		println("norm for M at iter: ", j, "WITH EXSRC is: ", sumMs);
 		if resultsFilename == ""
 				filename = "";
 			else
@@ -456,61 +491,61 @@ for freqIdx = startFrom:nfreq
 
 
 
-
-		runningProcs = map(x->x.where, pMisTemp);
-		pMisCurrent = map(fetch, pMisTemp);
-		pForpCurrent =  map(x->x.pFor, pMisCurrent);
-		eta = 20.0;
-		Dobs = map(x->x.dobs[:,:], pMisCurrent);
-		Wd = map(x->x.Wd[:,:], pMisCurrent);
-		DobsNew = copy(Dobs[:]);
-		nsrc = size(DobsNew[1],2);
-		TEmat = rand([-1,1],(nsrc,10));
-		WdEta = eta.*Wd;
-		DpNew, = getData(vec(mc),pForpCurrent);
-		DobsTemp = Array{Array}(undef, numOfCurrentProblems);
-		WdNew = Array{Array}(undef, numOfCurrentProblems);
-		for i=1:numOfCurrentProblems
-			DobsTemp[i] = fetch(DpNew[i]);
-			for s=1:nsrc
-				etaM1 = 2 .*diagm(0 => vec(Wd[1][:,1])).*diagm(0 => vec(Wd[1][:,1]));
-				println("SIZE OLD ETAM: ");
-				println(size(etaM1));
-				etaM = 2 * eta .*diagm(0 => vec(Wd[i][:,s])).*diagm(0 => vec(Wd[i][:,s]));
-				println("SIZE NEW ETAM: ");
-				println(size(etaM));
-				A = (2 .*I + etaM)
-				b = (etaM)*(A\Dobs[i][:,s])
-				DobsNew[i][:,s] = 2 .* (A\DobsTemp[i][:,s]) + b;
-			end
-			DobsNew[i] = DobsNew[i][:,:] * TEmat;
-			WdNew[i] = ones((size(DobsNew[i], 1), 10))./sqrt(10);
-			println("SIZE OLD WD: ");
-			println(size(WdNew[i]));
-			WdNew[i] = 1.0./(abs.(real.(DobsNew[i])) .+ 1e-1*mean(abs.(DobsNew[i])));
-			WdNew[i] = WdNew[i] ./ sqrt(10);
-			println("SIZE NEW WD: ");
-			println(size(WdNew[i]));
-		end
-
-		pForCurrent = Array{RemoteChannel}(undef, numOfCurrentProblems);
-		for i=1:numOfCurrentProblems
-			pForTemp = pForpCurrent[i];
-			pForTemp.Sources = pForTemp.ExtendedSources * TEmat;
-			pForCurrent[i] = initRemoteChannel(x->x, runningProcs[i], pForTemp);
-		end
-
-
-		pMisTemp2 = getMisfitParam(pForCurrent, WdNew, DobsNew, SSDFun, Iact, mback);
-
-		println("size of exsources:" , size(fetch(pMisTemp2[1]).pFor.Sources));
-
+		#
+		# runningProcs = map(x->x.where, pMisTemp);
+		# pMisCurrent = map(fetch, pMisTemp);
+		# pForpCurrent =  map(x->x.pFor, pMisCurrent);
+		# eta = 20.0;
+		# Dobs = map(x->x.dobs[:,:], pMisCurrent);
+		# Wd = map(x->x.Wd[:,:], pMisCurrent);
+		# DobsNew = copy(Dobs[:]);
+		# nsrc = size(DobsNew[1],2);
+		# TEmat = rand([-1,1],(nsrc,10));
+		# WdEta = eta.*Wd;
+		# DpNew, = getData(vec(mc),pForpCurrent);
+		# DobsTemp = Array{Array}(undef, numOfCurrentProblems);
+		# WdNew = Array{Array}(undef, numOfCurrentProblems);
+		# for i=1:numOfCurrentProblems
+		# 	DobsTemp[i] = fetch(DpNew[i]);
+		# 	for s=1:nsrc
+		# 		etaM1 = 2 .*diagm(0 => vec(Wd[1][:,1])).*diagm(0 => vec(Wd[1][:,1]));
+		# 		println("SIZE OLD ETAM: ");
+		# 		println(size(etaM1));
+		# 		etaM = 2 * eta .*diagm(0 => vec(Wd[i][:,s])).*diagm(0 => vec(Wd[i][:,s]));
+		# 		println("SIZE NEW ETAM: ");
+		# 		println(size(etaM));
+		# 		A = (2 .*I + etaM)
+		# 		b = (etaM)*(A\Dobs[i][:,s])
+		# 		DobsNew[i][:,s] = 2 .* (A\DobsTemp[i][:,s]) + b;
+		# 	end
+		# 	DobsNew[i] = DobsNew[i][:,:] * TEmat;
+		# 	WdNew[i] = ones((size(DobsNew[i], 1), 10))./sqrt(10);
+		# 	println("SIZE OLD WD: ");
+		# 	println(size(WdNew[i]));
+		# 	WdNew[i] = 1.0./(abs.(real.(DobsNew[i])) .+ 1e-1*mean(abs.(DobsNew[i])));
+		# 	WdNew[i] = WdNew[i] ./ sqrt(10);
+		# 	println("SIZE NEW WD: ");
+		# 	println(size(WdNew[i]));
+		# end
+		#
+		# pForCurrent = Array{RemoteChannel}(undef, numOfCurrentProblems);
+		# for i=1:numOfCurrentProblems
+		# 	pForTemp = pForpCurrent[i];
+		# 	pForTemp.Sources = pForTemp.ExtendedSources * TEmat;
+		# 	pForCurrent[i] = initRemoteChannel(x->x, runningProcs[i], pForTemp);
+		# end
+		#
+		#
+		# pMisTemp2 = getMisfitParam(pForCurrent, WdNew, DobsNew, SSDFun, Iact, mback);
+		#
+		# println("size of exsources:" , size(fetch(pMisTemp2[1]).pFor.Sources));
+		#
 
 
 
 
 		pInv.mref = mc[:];
-		mc,Dc,flag,His = projGN(mc,pInv,pMisTemp2,dumpResults = dumpGN);
+		mc,Dc,flag,His = projGN(mc,pInv,pMisTemp,dumpResults = dumpGN);
 
 
 		pMis[currentProblems] = pMisTemp;

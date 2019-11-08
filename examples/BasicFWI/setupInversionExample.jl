@@ -54,15 +54,15 @@ end
 # end
 
 dim     = 2;
-pad     = 30;
-newSize = [600,300];
+pad     = 3;
+newSize = [60,30];
 
 (m,Mr,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref("examples","SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.7);
 m = 1 ./ (m.^2);
 mref = 1 ./ (mref.^2);
 
 # attenuation for BC
-padx = 34; padz = 34
+padx = 4; padz = 4
 a    = 2.0;
 xc = getCellCenteredGrid(Mr)
 gamma = getHelmholtzABL(Mr,true,[padx;padz],a);
