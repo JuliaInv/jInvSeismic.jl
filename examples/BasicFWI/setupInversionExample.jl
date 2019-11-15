@@ -8,9 +8,9 @@ using Distributed
 using DelimitedFiles
 
 if nworkers() == 1
-	addprocs(2);
-elseif nworkers() < 2
-	addprocs(2 - nworkers());
+	addprocs(10);
+elseif nworkers() < 10
+	addprocs(10 - nworkers());
 end
 
 @everywhere begin
@@ -21,6 +21,7 @@ using jInv.Mesh
 using jInv.Utils
 using DelimitedFiles
 using jInv.ForwardShare
+using KrylovMethods
 end
 # function readModelAndGenerateMeshMref(readModelFolder::String,modelFilename::String,dim::Int64,pad::Int64,domain::Vector{Float64},newSize::Vector=[],velBottom::Float64=0.0,velHigh::Float64=0.0)
 # ########################## m,mref are in Velocity here. ###################################
@@ -54,15 +55,15 @@ end
 # end
 
 dim     = 2;
-pad     = 3;
-newSize = [60,30];
+pad     = 30;
+newSize = [600,300];
 
 (m,Mr,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref("examples","SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.7);
 m = 1 ./ (m.^2);
 mref = 1 ./ (mref.^2);
 
 # attenuation for BC
-padx = 4; padz = 4
+padx = 34; padz = 34
 a    = 2.0;
 xc = getCellCenteredGrid(Mr)
 gamma = getHelmholtzABL(Mr,true,[padx;padz],a);

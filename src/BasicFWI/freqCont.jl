@@ -2,6 +2,7 @@ export freqContBasic;
 export freqContTraceEstimation;
 using jInv.InverseSolve
 using Printf
+using KrylovMethods
 global inx = 1;
 """
 	function freqContBasic
@@ -80,7 +81,7 @@ function conjGradEx(beta::Float64, Ap::Vector{Matrix}, diags::Vector{SparseMatri
 	# println("SPD:", A' == A)
 	B = sum(b);
 
-	threshold = 1e-5;
+	threshold = 1e-10;
 	for i = 1:numIters
 		println("Current Iter: ", i);
 		# println("size ref", size(ref), size(A));
@@ -262,13 +263,20 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	# sizeZ = size(Z[:,s])
 	println("starting: ", s);
 
+
 	numOfCurrentProblems = size(currentProblems, 1);
+	sumZs = 0;
+	for i=1:numOfCurrentProblems
+		WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
+		sumZs += norm(WdSqr * (HinvPs[i]' * pMisArr[i].pFor.Sources[:,s] -  pMisArr[i].dobs[:,s,1]));
+	end
+	println("norm with Zs b4 cg:" , s, "is :", sumZs);
 	# println("SIZE A;:", size(Ap))
 	Ap = Vector{Matrix}(undef, numOfCurrentProblems);
 	diags = Vector{SparseMatrixCSC}(undef, numOfCurrentProblems);
 	B = Vector{Vector}(undef, numOfCurrentProblems);
-	ref = Vector(pMisArr[1].pFor.Sources[:,s]) +  rand(sizeH[1]) * 100;
-	# ref = zeros(sizeH[1])
+	# ref = Vector(pMisArr[1].pFor.Sources[:,s]) +  rand(sizeH[1]) * 100;
+	ref = zeros(sizeH[1])
 	# ref = rand(sizeH[1]) * 1000;
 	# beta = 1e-8;
 	# # A = zeros(sizeH[1], sizeH[2]);
@@ -316,7 +324,11 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	# writedlm(string("B", s, "_", inx), Bs)
 	# writedlm(string("Aq", s, "_", inx), A[:, :])
 	# newSource = real(A\Vector(Bs));
-	newSource = conjGradEx(beta, Ap, diags, B, sizeH[1], ref, 16);
+		# H::Function,gc::Vector,Active::BitArray,Precond::Function,cgTol::Real,maxIter::Int;out::Int=0)
+		# newSource = projPCG
+		A(x)=sum(map((Xp, diag) -> Xp * diag * (Xp' * x) .+ 2 * beta .* x, Ap, diags));
+		newSource,flagCG,relresCG,iterCG,resvecCG       = KrylovMethods.cg(A, sum(B), tol=1e-3, maxIter=16, out=2);
+		# newSource = conjGradEx(beta, Ap, diags, B, sizeH[1], ref, 16);
 	println("SZ:",size(newSource))
 	# newSource = jacobi(beta, sizeH, numOfCurrentProblems, pMisArr, s, 20);
 	# println(nor)
