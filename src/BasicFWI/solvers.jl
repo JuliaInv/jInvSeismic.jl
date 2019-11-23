@@ -63,7 +63,7 @@ function getFreqContParams(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
 	# regparams 			= [1.0,1.0,1.0,1e-5];
 	cgit 				= 8;
 	alpha 				= 1e+1;
-	pcgTol 				= 1e-1;
+	pcgTol 				= 1e-3;
 	maxit 				= 1;
 	HesPrec 			= getExactSolveRegularizationPreconditioner();
 	regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);

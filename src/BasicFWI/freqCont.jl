@@ -52,6 +52,9 @@ for freqIdx = startFrom:nfreq
 
 	mc,Dc,flag,His = projGNCG(mc,pInv,pMisTemp,dumpResults = dumpGN);
 
+	Dc,F,dF,d2F,pMisNone,times,indDebit = computeMisfit(mc, map(pm -> fetch(pm), pMisTemp));
+	println("Misfit for freq: ", freqIdx, " after gn5 is: ", F);
+	# println("Misfit at GN ", j, "frequncy idx: ", freqIdx, " Is: ", F);
 	clear!(pMisTemp);
 	tend = time_ns();
     println("Runtime of freqCont iteration: ");
@@ -256,8 +259,9 @@ function jacobi(beta::Float64, sizeH::Tuple, numOfCurrentProblems::Int64,
 end
 
 function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
-	pMisArr::Array{MisfitParam}, s::Int64, HinvPs::Vector{Array}, beta::Float64,
-	writeSource::Function)
+	pMisArr::Array{MisfitParam}, s::Int64, HinvPs::Vector{Array}, beta::Float64)
+	# ,
+	# writeSource::Function)
 	recvSize = size(pMisArr[1].pFor.Receivers)
 
 	# sizeZ = size(Z[:,s])
@@ -267,7 +271,11 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	numOfCurrentProblems = size(currentProblems, 1);
 	sumZs = 0;
 	for i=1:numOfCurrentProblems
+		println(typeof(pMisArr))
+		println(typeof(pMisArr[i].Wd))
+		println("size wd: ", size(pMisArr[i].Wd[:,s]))
 		WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
+		println("size pfor: ", size(pMisArr[i].pFor.Sources[:,s]))
 		sumZs += norm(WdSqr * (HinvPs[i]' * pMisArr[i].pFor.Sources[:,s] -  pMisArr[i].dobs[:,s,1]));
 	end
 	println("norm with Zs b4 cg:" , s, "is :", sumZs);
@@ -326,25 +334,51 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	# newSource = real(A\Vector(Bs));
 		# H::Function,gc::Vector,Active::BitArray,Precond::Function,cgTol::Real,maxIter::Int;out::Int=0)
 		# newSource = projPCG
-		A(x)=sum(map((Xp, diag) -> Xp * diag * (Xp' * x) .+ 2 * beta .* x, Ap, diags));
-		newSource,flagCG,relresCG,iterCG,resvecCG       = KrylovMethods.cg(A, sum(B), tol=1e-3, maxIter=16, out=2);
+		# A(x)=sum(map((Xp, diag) -> Xp * diag * (Xp' * x) .+ 2 * beta .* x, Ap, diags));
+		# newSource,flagCG,relresCG,iterCG,resvecCG       = KrylovMethods.cg(A, sum(B), tol=1e-5, maxIter=100, out=2);
+		# newSource = sum(map((Xp, diag) -> Xp * diag * Xp' , Ap, diags)) \ sum(B);
 		# newSource = conjGradEx(beta, Ap, diags, B, sizeH[1], ref, 16);
-	println("SZ:",size(newSource))
+	# println("SZ:",size(newSource))
 	# newSource = jacobi(beta, sizeH, numOfCurrentProblems, pMisArr, s, 20);
 	# println(nor)
-	writeSource(newSource, s);
+	A = zeros((sizeH[1], sizeH[1]));
+	b = zeros(sizeH[1]);
+	for i=1:numOfCurrentProblems
+		WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
+		A += HinvPs[i] *WdSqr* HinvPs[i]' + 2*beta*I;
+		# println("ISPOSDEF FOR i ", i, " " , isposdef( HinvPs[i] * HinvPs[i]'))
+		# println(HinvPs[i] * HinvPs[i]');
+		b += HinvPs[i] * WdSqr * pMisArr[i].dobs[:,s,1] + 2 * beta .* Vector(pMisArr[i].pFor.originalSources[:, s])
+	end
 
+	println("ISPOSDEF FOR A: " , isposdef(A))
+	println("type A ",typeof(A))
+	println("type b ",typeof(b))
+	# println(A)
+	# newSource = A\b;
+	newSource = KrylovMethods.cg((x-> A*x), b, tol=1e-5, maxIter=100, out=2)[1];
+	# writeSource(newSource, s);
+	# writedlm(string("Ns", s), newSource);
+	# println(newSource);
+	println("type ns: ", typeof(newSource));
 
 	sumZs = 0;
 	sumQs = 0;
+	sumZsD = 0;
+	sumQsD = 0;
 	for i=1:numOfCurrentProblems
 		WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
 		sumZs += norm(WdSqr * (HinvPs[i]' * newSource -  pMisArr[i].dobs[:,s,1]));
 		sumQs +=  norm(WdSqr * (HinvPs[i]' * pMisArr[i].pFor.originalSources[:, s] -  pMisArr[i].dobs[:,s,1]));
+		sumZsD += norm((HinvPs[i] * HinvPs[i]' * newSource -  HinvPs[i] * pMisArr[i].dobs[:,s,1]));
+		sumQsD +=  norm((HinvPs[i] * HinvPs[i]' * pMisArr[i].pFor.originalSources[:, s] - HinvPs[i] * pMisArr[i].dobs[:,s,1]));
 	end
 
 	println("norm with Zs:" , s, "is :", sumZs);
 	println("norm with Qs:" , s, "is :", sumQs);
+
+	println("norm with ZsD:" , s, "is :", sumZsD);
+	println("norm with QsD:" , s, "is :", sumQsD);
 
 
 	# writedlm(string("Ns", s, "_", inx), newSource)
@@ -353,42 +387,51 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 end
 function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	pMisArr::Array{MisfitParam}, indexes::StepRange, HinvPs::Vector{Array},
-	beta::Float64, writeSource::Function)
+	beta::Float64)
+	# , writeSource::Function)
 	newSources = Array{Array}(undef, size(indexes))
 	println(inx);
 	for (i, s) in enumerate(indexes)
 		newSources[i] = calculateZs(currentProblems, sizeH, pMisArr, s, HinvPs,
-		beta, writeSource);
+		beta);
+		#, writeSource);
 	end
 	return newSources;
 end
 
 function minimizeZs(mc, currentProblems::UnitRange, HinvPs::Vector{Array},
-	sizeH::Tuple, pMis::Array{RemoteChannel}, nsrc::Integer, beta::Float64,
-	writeSource::Function)
-	pMisTemp = pMis[currentProblems];
+	sizeH::Tuple, pMisArr::Array{MisfitParam}, nsrc::Integer, beta::Float64,
+	# writeSource::Function,
+	runningProcs::Array)
+	# pMisTemp = pMis[currentProblems];
+	pMisTemp = Array{RemoteChannel}(undef, length(currentProblems));
+
 	println("ABCD3")
 
-	runningProcs = map(x->x.where, pMis[currentProblems]);
+	# runningProcs = map(x->x.where, pMis[currentProblems]);
 
 	# pForCurrent = Array{RemoteChannel}(undef, numOfCurrentProblems);
 	# Zs = Array{}
 	t111 = time_ns();
-	pMisArr = Array{MisfitParam}(undef, length(currentProblems));
-	for i=1:length(currentProblems)
-		pMisArr[i] = fetch(pMisTemp[i])
-	end
+	# pMisArr = Array{MisfitParam}(undef, length(currentProblems));
+	# for i=1:length(currentProblems)
+	# 	pMisArr[i] = fetch(pMisTemp[i])
+	# end
 	newSourcesp = Array{RemoteChannel}(undef, nworkers());
 	@sync begin
 		for worker in 1:nworkers()
 			@async begin
 				newSourcesp[worker] = initRemoteChannel(calculateZs, workers()[worker],
 				currentProblems, sizeH, pMisArr, worker:nworkers():nsrc,
-				HinvPs[currentProblems], beta, writeSource);
+				HinvPs[currentProblems], beta);
+				# , writeSource);
 			end
 		end
 	end
 	newSources = Array{Array}(undef, nworkers());
+	Qs = pMisArr[1].pFor.originalSources;
+	s1 = size(Qs)[1];
+	println("size sources 1: ", s1);
 	for worker in 1:nworkers()
 		# newSource = calculateZs(currentProblems, sizeH, pMisArr, s);
 		newSources[worker] = fetch(newSourcesp[worker])
@@ -400,13 +443,19 @@ function minimizeZs(mc, currentProblems::UnitRange, HinvPs::Vector{Array},
 		# pMisCur = fetch(pMisTemp[i]);
 		# println("A/B");
 		# println(size(newSource));
+		Sources = Matrix{ComplexF64}(undef, s1,nsrc);
+		println("SIZE SOURCES : ", size(Sources));
+		# println("type of sources: ", typeof(pMisArr[i].pFor.Sources))
 		for s=1:nsrc
 			# pMisArr[i].pFor.ExtendedSources[:, s] = newSources[(s - 1) % nworkers() + 1][floor(Int64, (s - 1) / nworkers()) + 1];
-			pMisArr[i].pFor.Sources[:, s] = newSources[(s - 1) % nworkers() + 1][floor(Int64, (s - 1) / nworkers()) + 1];
+			# pMisArr[i].pFor.Sources[:, s] = newSources[(s - 1) % nworkers() + 1][floor(Int64, (s - 1) / nworkers()) + 1];
+			Sources[:,s] = newSources[(s - 1) % nworkers() + 1][floor(Int64, (s - 1) / nworkers()) + 1];
+
 			# writeSource(pMisArr[i].pFor.Sources[:, s], s);
 		end
 			# println("AFTER22");
 		# writedlm(string("Src", i), pMisArr[i].pFor.Sources)
+		pMisArr[i].pFor.Sources = Sources;
 		pMisTemp[i] = initRemoteChannel(x->x, runningProcs[i], pMisArr[i]);
 		# pMis[currentProblems] = pMisTemp;
 	end
@@ -439,7 +488,7 @@ println(size(Z));
 println("NSRC221");
 println(nsrc);
 HinvPs = Vector{Array}(undef, length(startFrom:nfreq));
-beta = 1e-10;
+beta = 1e-4;
 for freqIdx = startFrom:nfreq
 	println("start freqCont Zs iteration from: ", freqIdx)
 	tstart = time_ns();
@@ -449,17 +498,35 @@ for freqIdx = startFrom:nfreq
 	end
 	reqIdx2 = freqIdx;
 	currentProblems = reqIdx1:reqIdx2;
+	pMisCurrent = map(fetch, pMis[currentProblems]);
+	pForpCurrent =  map(x->x.pFor, pMisCurrent);
+	Dp,pForp = getData(vec(mc), pForpCurrent);
+
+	pForpCurrent = map(x->fetch(x), pForp);
 	numOfCurrentProblems = size(currentProblems, 1);
+	# DobsC = Array{Array}(undef, numOfCurrentProblems);
+	# for k=1:length(Dp)
+	# 	DobsC[k] = fetch(Dp[k]);
+	# end
+	# map((pm, dobsCur) -> pm.dobs = dobsCur , pMisCurrent, DobsC);
+	# WdC = Array{Array}(undef, numOfCurrentProblems);
+	# for k=1:length(DobsC)
+	# 	# Wd[k] = 1.0./(abs.(real.(Dobs[k])) .+ 1e-1*mean(abs.(Dobs[k])));
+	# 	WdC[k] = ones(size(DobsC[k]))./(mean(abs.(DobsC[k])));
+	# end
+	map((pm,pf) -> pm.pFor = pf , pMisCurrent, pForpCurrent);
+
 	println("\n======= New Continuation Stage: selecting continuation batches: ",reqIdx1," to ",reqIdx2,"=======\n");
-	pFor =  fetch(pMis[freqIdx]).pFor;
+	# pFor =  fetch(pMis[freqIdx]).pFor;
 
 
 	for j=1:5
 
 		fetchedPMis = Vector{MisfitParam}(undef, length(startFrom:freqIdx));
 		for freqs = startFrom:freqIdx
+			index = freqs - startFrom + 1;
 			fetchedPMis[freqs] = fetch(pMis[freqs]);
-			HinvPs[freqs] = (fetchedPMis[freqs].pFor.Ainv[1])' \ Matrix(pFor.Receivers);
+			HinvPs[freqs] = (pForpCurrent[index].Ainv[1])' \ Matrix(pForpCurrent[index].Receivers);
 
 			println("HINVP done");
 			# pMisTemp = getMisfitParam(pForCurrent, WdNew, pMis., SSDFun, Iact, mback);
@@ -497,8 +564,12 @@ for freqIdx = startFrom:nfreq
 			end
 		end
 
-		pMisTemp = minimizeZs(mc, currentProblems, HinvPs,sizeH, pMis, nsrc, beta,
-		writeSource);
+		Dc,F,dF,d2F,pMisNone,times,indDebit = computeMisfit(mc, pMisCurrent);
+		println("Misfit B4 mzs at GN ", j, "frequncy idx: ", freqIdx, " Is: ", F);
+
+		pMisTemp = minimizeZs(mc, currentProblems, HinvPs,sizeH, pMisCurrent, nsrc, beta,
+		# writeSource,
+		map(x->x.where, pMis[currentProblems]));
 
 
 
@@ -552,13 +623,17 @@ for freqIdx = startFrom:nfreq
 		#
 		# println("size of exsources:" , size(fetch(pMisTemp2[1]).pFor.Sources));
 		#
+		Dc,F,dF,d2F,pMisNone,times,indDebit = computeMisfit(mc, map(pm -> fetch(pm), pMisTemp));
 
+		println("Misfit at GN ", j, "frequncy idx: ", freqIdx, " Is: ", F);
 
 
 
 		pInv.mref = mc[:];
-		mc,Dc,flag,His = projGN(mc,pInv,pMisTemp,dumpResults = dumpGN);
+		mc,Dc,flag,His = projGNCG(mc,pInv,pMisTemp,dumpResults = dumpGN);
+		Dc,F,dF,d2F,pMisNone,times,indDebit = computeMisfit(mc, map(pm -> fetch(pm), pMisTemp));
 
+		println("Misfit after GN ", j, "frequncy idx: ", freqIdx, " Is: ", F);
 
 		pMis[currentProblems] = pMisTemp;
 		clear!(pMisTemp);

@@ -2,7 +2,7 @@ using DelimitedFiles
 using jInvVis
 using PyPlot
 
-
-m = DelimitedFiles.readdlm("ES_FWI_FC5_5_GN1.dat");
+figure();
+m = DelimitedFiles.readdlm("output/FWI_FC1_GN5.dat");
 
 imshow(m'); colorbar();

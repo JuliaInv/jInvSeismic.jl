@@ -8,9 +8,9 @@ using Distributed
 using DelimitedFiles
 
 if nworkers() == 1
-	addprocs(10);
-elseif nworkers() < 10
-	addprocs(10 - nworkers());
+	addprocs(2);
+elseif nworkers() < 2
+	addprocs(2 - nworkers());
 end
 
 @everywhere begin
@@ -55,15 +55,15 @@ end
 # end
 
 dim     = 2;
-pad     = 30;
-newSize = [600,300];
+pad     = 3;
+newSize = [60,30];
 
 (m,Mr,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref("examples","SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.7);
 m = 1 ./ (m.^2);
 mref = 1 ./ (mref.^2);
 
 # attenuation for BC
-padx = 34; padz = 34
+padx = 4; padz = 4
 a    = 2.0;
 xc = getCellCenteredGrid(Mr)
 gamma = getHelmholtzABL(Mr,true,[padx;padz],a);
@@ -73,8 +73,8 @@ println("Size m: " , size(m))
 # parameters for the Helmholtz (units in km)
 h = Mr.h;
 n = Mr.n;
-# omega = 2*pi*[2.0;2.5;]
-omega = 2*pi*[2.0;2.5;3.5;4.5;6.0;]
+omega = 0.3*2*pi*[2.0;5.0]
+# omega = 2*pi*[2.0;2.5;3.5;4.5;6.0;]
 nfreq = length(omega)
 # generate sources
 q = zeros(tuple(n.+1...)); q[padx+1:4:end-padx-1,1] .= 1e4

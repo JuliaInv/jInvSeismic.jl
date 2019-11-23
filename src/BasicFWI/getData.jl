@@ -26,6 +26,8 @@ function getData(m,pFor::BasicFWIparam,doClear::Bool=false)
     for i=1:length(omega)
         t1 = time_ns();
         H = getHelmholtzOperator(m,gamma,omega[i],Mesh)
+        # println("H: ", H);
+        # println("HINV: ", inv(H));
         t2 = time_ns();
         # println("Runtime of helmholtz:");
         # println((t1 - t2)/1.0e9);

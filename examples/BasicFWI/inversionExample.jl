@@ -49,7 +49,7 @@ function startEx()
 
 	figure(22);
 	imshow(mref'); colorbar();
-
+	#
 	mc, Dc, pInv, Iact, mback, pMis = solveInverseProblemZs(pForp, Dobs, Wd, nfreq, nx, nz, mref,
 								Mr, 0.5, 0.035,"ES_FWI.dat", true, plotModelResult);
 
@@ -68,9 +68,9 @@ function startEx()
 	#Plot residuals
 	figure(23);
 	imshow((abs.(m.-fullMc))'); colorbar();
-	return pMis
+	# return pMis
 end
 
 
-pMis= startEx()
+startEx()
 # pMis[1].pFor.Sources[10,1] = 8
