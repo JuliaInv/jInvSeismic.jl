@@ -63,201 +63,6 @@ end
 return mc,Dc,flag,HIS;
 end
 
-"""
-Ap, diag are matrices such that diag is diagonal and A = Sum(Ap(i)*diag(i)*Ap(i)^T)
-calculates x where Ax=b, relevant when A is too big to save in memory
-"""
-function conjGradEx(beta::Float64, Ap::Vector{Matrix}, diags::Vector{SparseMatrixCSC},
-	b::Vector{Vector}, meshSize::Int, ref::Vector,
-	numIters::Int)
-	problemsSize = length(Ap);
-	println("S", problemsSize);
-	r = zeros(meshSize);
-
-	for i = 1:problemsSize
-		println(size(r))
-		println(size(Ap[i]),size(diags[i]), size(ref))
-		r += b[i] - Ap[i] * diags[i] * ((Ap[i])' * ref) - 2 * beta .* ref;
-	end
-	p = copy(r);
-	# A = sum(map((Xp, diag) -> Xp * diag * Xp', Ap, diags));
-	# println("SPD:", A' == A)
-	B = sum(b);
-
-	threshold = 1e-10;
-	for i = 1:numIters
-		println("Current Iter: ", i);
-		# println("size ref", size(ref), size(A));
-		# println("norm r ", norm(B - A*ref));
-		divider = sum(map((Xp, diag) -> p' * Xp * diag * (Xp' * p) .+ 2 * beta .* p' * p, Ap, diags));
-		alpha = (r' * r) / divider;
-		println(alpha);
-		refDiff = alpha .* p;
-		# println("BBB")
-		ref += refDiff;
-		rNext = r -  alpha .* sum(map((Xp, diag) -> Xp * diag * (Xp' * p) + 2 * beta .* p, Ap, diags));
-# println("BBB2")
-		if norm(rNext) < threshold
-			return ref;
-		end
-		# println("BBB3")
-		bet = (rNext' * rNext) / (r' * r);
-		# println("BBB4")
-		r = rNext;
-		p = r + bet .* p;
-		println("refdiff:",norm(refDiff));
-		println(norm(p));
-	end
-
-	return ref;
-	# println(size(r0));
-
-end
-
-function jacobi(beta::Float64, sizeH::Tuple, numOfCurrentProblems::Int64,
-	pMisArr::Array{MisfitParam}, s::Int64,
-	numIters::Int)
-	# problemsSize = length(Ap);
-
-	Ap = Vector{Matrix}(undef, numOfCurrentProblems);
-	diags = Vector{SparseMatrixCSC}(undef, numOfCurrentProblems);
-	B = Vector{Vector}(undef, numOfCurrentProblems);
-
-	for j=1:numOfCurrentProblems
-		P = pMisArr[j].pFor.Receivers;
-		WdSqr = 2 .*diagm(0 => vec(pMisArr[j].Wd[:,s])).*diagm(0 => vec(pMisArr[j].Wd[:,s]));
-		LUcur = pMisArr[j].pFor.Ainv[1];
-		LUcur = LUcur';
-		HinvP = zeros(ComplexF64, size(P))
-		HinvP = LUcur \ Matrix(P);
-		println("Size Hinv:", size(HinvP))
-		# println(size(diag))
-		# println(size(WdSqr))
-
-		Ap[j] =  real(HinvP);
-		diags[j] =  real(WdSqr);
-		B[j] = real(2 * beta .* pMisArr[j].pFor.originalSources[:, s] +  HinvP * WdSqr * pMisArr[j].dobs[:,s,1]);
-
-		# A1 = A + HinvP * WdSqr * HinvP'
-		# A = A + Ap[i] * diags[i] * (Ap[i])' + 2 * beta .* I;
-		# b =  real(2 * beta .* pMisArr[j].pFor.originalSources[:, s] +  HinvP * WdSqr * pMisArr[j].dobs[:,s,1]);
-		# r += b - Ap * WdSqr * (Ap' * ref) - 2 * beta .* ref;
-		# D += map(x->x^2, Ap) * diag(WdSqr) .+ 2*beta;
-		# Bs = Bs + 2 * beta .* pMisArr[i].pFor.originalSources[:, s] +  HinvP * WdSqr * pMisArr[i].dobs[:,s,1];
-	end
-	# ref = Vector(pMisArr[1].pFor.Sources[:,s])
-	ref = zeros(sizeH[1])
-	# beta = 1e-2;
-	# A = zeros(sizeH[1], sizeH[2]);
-	# Bs = zeros(sizeH[1]);
-	threshold = 1e-4;
-	meshSize = sizeH[1];
-	for i = 1:numIters
-		println("Current Iter: ", i);
-		# println("size ref", size(ref), size(A));
-		# println("norm r ", norm(B - A*ref));
-		r = zeros(meshSize);
-		D = zeros(meshSize);
-
-		# for j = 1:problemsSize
-		# 	# println(size(r))
-		# 	# println(size(Ap[i]),size(diags[i]), size(ref))
-
-		# 	# for k=1:meshSize
-		# 	# 	sqrAp = map(x->x^2, Ap[j][k,:])
-		# 	# 	D[k] = sqrAp * diag(diags[j])
-		# 	# end
-		# end
-		for j=1:numOfCurrentProblems
-			# P = pMisArr[j].pFor.Receivers;
-			# WdSqr = 2 .*diagm(0 => vec(pMisArr[j].Wd[:,s])).*diagm(0 => vec(pMisArr[j].Wd[:,s]));
-			# LUcur = pMisArr[j].pFor.Ainv[1];
-			# LUcur = LUcur';
-			# HinvP = zeros(ComplexF64, size(P))
-			# HinvP = LUcur \ Matrix(P);
-			# println("Size Hinv:", size(HinvP))
-			# # println(size(diag))
-			# # println(size(WdSqr))
-			# Ap =  real(HinvP);
-			# WdSqr =  real(WdSqr);
-			# A1 = A + HinvP * WdSqr * HinvP'
-			# A = A + Ap[i] * diags[i] * (Ap[i])' + 2 * beta .* I;
-			# b =  real(2 * beta .* pMisArr[j].pFor.originalSources[:, s] +  HinvP * WdSqr * pMisArr[j].dobs[:,s,1]);
-			r += B[j] - Ap[j] * diags[j] * (Ap[j]' * ref) - 2 * beta .* ref;
-			D += map(x->x^2, Ap[j]) * diag(diags[j]) .+ 2*beta;
-			# Bs = Bs + 2 * beta .* pMisArr[i].pFor.originalSources[:, s] +  HinvP * WdSqr * pMisArr[i].dobs[:,s,1];
-		end
-
-		if norm(r) < threshold
-			return ref;
-		end
-		# println("r:", r)
-		# println("D:", D)
-		# println("D-1:",map(x-> 1/x, D))
-		# println(ref)
-		ref += map(x-> 1/x, D) .* r;
-	end
-	# println("S", problemsSize);
-	# p = copy(r);
-	# A = sum(map((Xp, diag) -> Xp * diag * Xp', Ap, diags));
-	# println("Anorm:", norm(Ao-A))
-	# println("BDIFF:", norm(Bo-sum(b)))
-	# println("ADIFF:", norm(Ao - sum(map((Xp, diag) -> Xp * diag * Xp' + 2 * beta .* I, Ap, diags))))
-	# println("SPD:", A' == A)
-	# B = sum(b);
-	# divider = sum(map((Xp, diag) -> p' * Xp * diag * (Xp' * p), Ap, diags));
-	# for i = 1:numIters
-	# 	println("Current Iter: ", i);
-	# 	# println("size ref", size(ref), size(A));
-	# 	# println("norm r ", norm(B - A*ref));
-	# 	r = zeros(meshSize);
-	# 	D = zeros(meshSize);
-	#
-	# 	for j = 1:problemsSize
-	# 	# 	# println(size(r))
-	# 	# 	# println(size(Ap[i]),size(diags[i]), size(ref))
-	# 		r += b[j] - Ap[j] * diags[j] * ((Ap[j])' * ref) - 2 * beta .* ref;
-	# 		D += map(x->x^2, Ap[j]) * diag(diags[j]) .+ 2*beta;
-	# 	# 	# for k=1:meshSize
-	# 	# 	# 	sqrAp = map(x->x^2, Ap[j][k,:])
-	# 	# 	# 	D[k] = sqrAp * diag(diags[j])
-	# 	# 	# end
-	# 	end
-	# 	# println("SZ:",size(A),size(B))
-	# 	# rt = Bo - Ao * ref
-	# 	# println("DiffR:", norm(rt-r))
-	# 	# println("SR",size(r))
-	# 	# Dt = diag(Ao)
-	# 	# println("DiffD:", norm(Dt-D))
-	# 	if norm(r) < threshold
-	# 		return ref;
-	# 	end
-	# 	# println("r:", r)
-	# 	# println("D:", D)
-	# 	# println("D-1:",map(x-> 1/x, D))
-	# 	# println(ref)
-	# 	ref += map(x-> 1/x, D) .* r;
-	# 	# println(ref)
-	# 	# alpha = (r' * r) / divider;
-	# 	# println(alpha);
-	# 	# refDiff = alpha * p;
-	# 	# if norm(refDiff) < threshold
-	# 	# 	return ref + refDiff;
-	# 	# end
-	# 	# ref += refDiff;
-	# 	# rNext = r -  alpha * sum(map((Xp, diag) -> Xp * diag * (Xp' * p), Ap, diags));
-	# 	# bet = (rNext' * rNext) / (r' * r);
-	# 	# r = rNext;
-	# 	# p = r + bet * p;
-	# 	# println("refdiff:",norm(refDiff));
-	# 	# println(norm(p));
-	# end
-	#
-	# return ref;
-	# # println(size(r0));
-	return ref;
-end
-
 function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	pMisArr::Array{MisfitParam}, s::Int64, HinvPs::Vector{Array}, beta::Float64)
 	# ,
@@ -294,7 +99,7 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 		P = pMisArr[i].pFor.Receivers;
 		WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
 		# LUcur = pMisArr[i].pFor.Ainv[1];
-		Ap[i] = real(HinvPs[i])
+		Ap[i] = HinvPs[i]
 		# LUcur = LUcur';
 		# HinvP = zeros(ComplexF64, size(P))
 		# HinvP = LUcur \ Matrix(P);
@@ -302,14 +107,13 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 		# println(size(diag))
 		# println(size(WdSqr))
 		# Ap[i] =  real(HinvP);
-		diags[i] =  real(WdSqr);
+		diags[i] =  WdSqr;
 		# A1 = A + HinvP * WdSqr * HinvP'
 		# A = A + Ap[i] * diags[i] * (Ap[i])' + 2 * beta .* I;
 		# PB += real(HinvP * WdSqr * pMisArr[i].dobs[:,s,1]);
-		B[i] =  real(2 * beta .* pMisArr[i].pFor.originalSources[:, s] +  HinvPs[i] * WdSqr * pMisArr[i].dobs[:,s,1]);
+		B[i] =  2 * beta .* pMisArr[i].pFor.originalSources[:, s] +  HinvPs[i] * WdSqr * pMisArr[i].dobs[:,s,1];
 		# Bs = Bs + 2 * beta .* pMisArr[i].pFor.originalSources[:, s] +  HinvP * WdSqr * pMisArr[i].dobs[:,s,1];
 	end
-
 
 	println("AABBB");
 	# writedlm(string("B_",s), PB);
@@ -341,26 +145,32 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	# println("SZ:",size(newSource))
 	# newSource = jacobi(beta, sizeH, numOfCurrentProblems, pMisArr, s, 20);
 	# println(nor)
-	A = zeros((sizeH[1], sizeH[1]));
-	b = zeros(sizeH[1]);
-	for i=1:numOfCurrentProblems
-		WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
-		A += HinvPs[i] *WdSqr* HinvPs[i]' + 2*beta*I;
-		# println("ISPOSDEF FOR i ", i, " " , isposdef( HinvPs[i] * HinvPs[i]'))
-		# println(HinvPs[i] * HinvPs[i]');
-		b += HinvPs[i] * WdSqr * pMisArr[i].dobs[:,s,1] + 2 * beta .* Vector(pMisArr[i].pFor.originalSources[:, s])
-	end
-
-	println("ISPOSDEF FOR A: " , isposdef(A))
-	println("type A ",typeof(A))
-	println("type b ",typeof(b))
+	# A = zeros((sizeH[1], sizeH[1]));
+	# b = zeros(sizeH[1]);
+	# newSource = zeros(sizeH[1]);
+	# for i=1:numOfCurrentProblems
+	# 	WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
+	# 	A += HinvPs[i] *WdSqr* HinvPs[i]' + 2*beta*I;
+	# 	# println("ISPOSDEF FOR i ", i, " " , isposdef( HinvPs[i] * HinvPs[i]'))
+	# 	# println(HinvPs[i] * HinvPs[i]');
+	# 	b += HinvPs[i] * WdSqr * pMisArr[i].dobs[:,s,1] + 2 * beta .* Vector(pMisArr[i].pFor.originalSources[:, s])
+	# 	# newSource += Vector(pMisArr[i].pFor.originalSources[:, s]) + (HinvPs[i] * WdSqr * pMisArr[i].dobs[:,s,1])./(2 * beta) -
+	# 	# 	 ( HinvPs[i] *WdSqr* HinvPs[i]' * Vector(pMisArr[i].pFor.originalSources[:, s])) ./ (2*beta);
+	# end
+	# newSource = newSource ./ float(numOfCurrentProblems);
+	# println("ISPOSDEF FOR A: " , isposdef(A))
+	# println("type A ",typeof(A))
+	# println("type b ",typeof(b))
 	# println(A)
 	# newSource = A\b;
-	newSource = KrylovMethods.cg((x-> A*x), b, tol=1e-5, maxIter=100, out=2)[1];
+	# A=real(A)
+	# b=real(b)
+
+	newSource = KrylovMethods.cg((x-> real(sum(map((Ai, diag) ->  Ai * diag * (Ai'* x) + 2*beta.* x, Ap, diags)))), real(sum(B)), tol=1e-5, maxIter=100)[1];
 	# writeSource(newSource, s);
 	# writedlm(string("Ns", s), newSource);
 	# println(newSource);
-	println("type ns: ", typeof(newSource));
+	# println("type ns: ", typeof(newSource));
 
 	sumZs = 0;
 	sumQs = 0;
@@ -368,7 +178,7 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	sumQsD = 0;
 	for i=1:numOfCurrentProblems
 		WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
-		sumZs += norm(WdSqr * (HinvPs[i]' * newSource -  pMisArr[i].dobs[:,s,1]));
+		sumZs += norm(WdSqr * (HinvPs[i]' * newSource -  pMisArr[i].dobs[:,s,1])) + beta * norm(newSource - pMisArr[i].pFor.originalSources[:, s]);
 		sumQs +=  norm(WdSqr * (HinvPs[i]' * pMisArr[i].pFor.originalSources[:, s] -  pMisArr[i].dobs[:,s,1]));
 		sumZsD += norm((HinvPs[i] * HinvPs[i]' * newSource -  HinvPs[i] * pMisArr[i].dobs[:,s,1]));
 		sumQsD +=  norm((HinvPs[i] * HinvPs[i]' * pMisArr[i].pFor.originalSources[:, s] - HinvPs[i] * pMisArr[i].dobs[:,s,1]));
@@ -390,7 +200,7 @@ function calculateZs(currentProblems::UnitRange, sizeH::Tuple,
 	beta::Float64)
 	# , writeSource::Function)
 	newSources = Array{Array}(undef, size(indexes))
-	println(inx);
+	# println(inx);
 	for (i, s) in enumerate(indexes)
 		newSources[i] = calculateZs(currentProblems, sizeH, pMisArr, s, HinvPs,
 		beta);
@@ -406,7 +216,7 @@ function minimizeZs(mc, currentProblems::UnitRange, HinvPs::Vector{Array},
 	# pMisTemp = pMis[currentProblems];
 	pMisTemp = Array{RemoteChannel}(undef, length(currentProblems));
 
-	println("ABCD3")
+	# println("ABCD3")
 
 	# runningProcs = map(x->x.where, pMis[currentProblems]);
 
@@ -423,7 +233,7 @@ function minimizeZs(mc, currentProblems::UnitRange, HinvPs::Vector{Array},
 			@async begin
 				newSourcesp[worker] = initRemoteChannel(calculateZs, workers()[worker],
 				currentProblems, sizeH, pMisArr, worker:nworkers():nsrc,
-				HinvPs[currentProblems], beta);
+				HinvPs, beta);
 				# , writeSource);
 			end
 		end
@@ -431,7 +241,7 @@ function minimizeZs(mc, currentProblems::UnitRange, HinvPs::Vector{Array},
 	newSources = Array{Array}(undef, nworkers());
 	Qs = pMisArr[1].pFor.originalSources;
 	s1 = size(Qs)[1];
-	println("size sources 1: ", s1);
+	# println("size sources 1: ", s1);
 	for worker in 1:nworkers()
 		# newSource = calculateZs(currentProblems, sizeH, pMisArr, s);
 		newSources[worker] = fetch(newSourcesp[worker])
@@ -444,7 +254,7 @@ function minimizeZs(mc, currentProblems::UnitRange, HinvPs::Vector{Array},
 		# println("A/B");
 		# println(size(newSource));
 		Sources = Matrix{ComplexF64}(undef, s1,nsrc);
-		println("SIZE SOURCES : ", size(Sources));
+		# println("SIZE SOURCES : ", size(Sources));
 		# println("type of sources: ", typeof(pMisArr[i].pFor.Sources))
 		for s=1:nsrc
 			# pMisArr[i].pFor.ExtendedSources[:, s] = newSources[(s - 1) % nworkers() + 1][floor(Int64, (s - 1) / nworkers()) + 1];
@@ -473,9 +283,9 @@ function freqContZs(mc, pInv::InverseParam, pMis::Array{RemoteChannel},nfreq::In
 # firstRun = 12;
 # pInv.maxIter = firstRun;
 Dc = 0;
-println("GLOBAL INX");
+# println("GLOBAL INX");
 flag = -1;
-println(inx)
+# println(inx)
 HIS = [];
 pFor = fetch(pMis[1]).pFor
 Z = copy(pFor.originalSources);
@@ -483,12 +293,11 @@ nrec = size(pFor.Receivers, 2);
 sizeH = size(pFor.Ainv[1]);
 pFor = nothing
 nsrc = size(Z, 2);
-println("SIZE Z");
-println(size(Z));
-println("NSRC221");
-println(nsrc);
-HinvPs = Vector{Array}(undef, length(startFrom:nfreq));
-beta = 1e-4;
+# println("SIZE Z");
+# println(size(Z));
+# println("NSRC221");
+# println(nsrc);
+beta = 5e-4;
 for freqIdx = startFrom:nfreq
 	println("start freqCont Zs iteration from: ", freqIdx)
 	tstart = time_ns();
@@ -498,35 +307,40 @@ for freqIdx = startFrom:nfreq
 	end
 	reqIdx2 = freqIdx;
 	currentProblems = reqIdx1:reqIdx2;
-	pMisCurrent = map(fetch, pMis[currentProblems]);
-	pForpCurrent =  map(x->x.pFor, pMisCurrent);
-	Dp,pForp = getData(vec(mc), pForpCurrent);
 
-	pForpCurrent = map(x->fetch(x), pForp);
-	numOfCurrentProblems = size(currentProblems, 1);
-	# DobsC = Array{Array}(undef, numOfCurrentProblems);
-	# for k=1:length(Dp)
-	# 	DobsC[k] = fetch(Dp[k]);
-	# end
-	# map((pm, dobsCur) -> pm.dobs = dobsCur , pMisCurrent, DobsC);
-	# WdC = Array{Array}(undef, numOfCurrentProblems);
-	# for k=1:length(DobsC)
-	# 	# Wd[k] = 1.0./(abs.(real.(Dobs[k])) .+ 1e-1*mean(abs.(Dobs[k])));
-	# 	WdC[k] = ones(size(DobsC[k]))./(mean(abs.(DobsC[k])));
-	# end
-	map((pm,pf) -> pm.pFor = pf , pMisCurrent, pForpCurrent);
 
 	println("\n======= New Continuation Stage: selecting continuation batches: ",reqIdx1," to ",reqIdx2,"=======\n");
 	# pFor =  fetch(pMis[freqIdx]).pFor;
 
 
 	for j=1:5
+		pMisCurrent = map(fetch, pMis[currentProblems]);
+		pForpCurrent =  map(x->x.pFor, pMisCurrent);
+		Dp,pForp = getData(vec(mc), pForpCurrent);
+		# for i = 1:length(currentProblems)
+		# 	pMisCurrent[i].dobs = fetch(Dp[i]);
+		# end
+		pForCurrent = map(x->fetch(x), pForp);
+		numOfCurrentProblems = size(currentProblems, 1);
+		# DobsC = Array{Array}(undef, numOfCurrentProblems);
+		# for k=1:length(Dp)
+		# 	DobsC[k] = fetch(Dp[k]);
+		# end
+		# map((pm, dobsCur) -> pm.dobs = dobsCur , pMisCurrent, DobsC);
+		# WdC = Array{Array}(undef, numOfCurrentProblems);
+		# for k=1:length(DobsC)
+		# 	# Wd[k] = 1.0./(abs.(real.(Dobs[k])) .+ 1e-1*mean(abs.(Dobs[k])));
+		# 	WdC[k] = ones(size(DobsC[k]))./(mean(abs.(DobsC[k])));
+		# end
+		map((pm,pf) -> pm.pFor = pf , pMisCurrent, pForCurrent);
 
-		fetchedPMis = Vector{MisfitParam}(undef, length(startFrom:freqIdx));
-		for freqs = startFrom:freqIdx
-			index = freqs - startFrom + 1;
-			fetchedPMis[freqs] = fetch(pMis[freqs]);
-			HinvPs[freqs] = (pForpCurrent[index].Ainv[1])' \ Matrix(pForpCurrent[index].Receivers);
+		# fetchedPMis = Vector{MisfitParam}(undef, numOfCurrentProblems);
+		HinvPs = Vector{Array}(undef, numOfCurrentProblems);
+
+		for freqs = 1:numOfCurrentProblems
+			# index = freqs - startFrom + 1;
+			# fetchedPMis[freqs] = fetch(pMis[freqs]);
+			HinvPs[freqs] = (pForCurrent[freqs].Ainv[1])' \ Matrix(pForCurrent[freqs].Receivers);
 
 			println("HINVP done");
 			# pMisTemp = getMisfitParam(pForCurrent, WdNew, pMis., SSDFun, Iact, mback);
@@ -535,18 +349,18 @@ for freqIdx = startFrom:nfreq
 			# Here we set a dump function for GN for this iteracion of FC
 		end
 
-		sumMs = 0;
+		# sumMs = 0;
 
-		for ix1 = startFrom:freqIdx
-			println(nsrc);
-			for s = 1:nsrc
-				s=1;
-				pMisCC = fetchedPMis[ix1];
-				WdSqr = 2 .*diagm(0 => vec(pMisCC.Wd[:,s])).*diagm(0 => vec(pMisCC.Wd[:,s]));
-				sumMs +=  norm(WdSqr * (HinvPs[ix1]' * pMisCC.pFor.originalSources[:, s] -  pMisCC.dobs[:,s,1]));
-			end
-		end
-		println("norm for M at iter: ", j, "WITH EXSRC is: ", sumMs);
+		# for ix1 = startFrom:freqIdx
+		# 	println(nsrc);
+		# 	for s = 1:nsrc
+		# 		s=1;
+		# 		pMisCC = fetchedPMis[ix1];
+		# 		WdSqr = 2 .*diagm(0 => vec(pMisCC.Wd[:,s])).*diagm(0 => vec(pMisCC.Wd[:,s]));
+		# 		sumMs +=  norm(WdSqr * (HinvPs[ix1]' * pMisCC.pFor.originalSources[:, s] -  pMisCC.dobs[:,s,1]));
+		# 	end
+		# end
+		# println("norm for M at iter: ", j, "WITH EXSRC is: ", sumMs);
 		if resultsFilename == ""
 				filename = "";
 			else
@@ -638,7 +452,9 @@ for freqIdx = startFrom:nfreq
 		pMis[currentProblems] = pMisTemp;
 		clear!(pMisTemp);
 	end
-	beta *= 10;
+	# if freqIdx > startFrom
+		beta *= 10;
+	# end
 	tend = time_ns();
     println("Runtime of freqCont iteration: ");
     println((tend - tstart)/1.0e9);
@@ -761,457 +577,3 @@ end
 function dummy(mc,Dc,iter,pInv,pMis)
 # this function does nothing and is used as a default for dumpResults().
 end
-
-function  projGNZs(mc,pInv::InverseParam,pMis;indCredit=[],
-	dumpResults::Function = dummy,out::Int=2,solveGN::Function=projPCG)
-	println("CHANGES PROJGN SAGIBU");
-
-	maxIter     = pInv.maxIter      #  Max. no. iterations.
-	pcgMaxIter  = pInv.pcgMaxIter   #  Max cg iters.
-	pcgTol      = pInv.pcgTol       #  CG stopping tolerance.
-	stepTol     = pInv.minUpdate    #  Step norm stopping tol.
-	maxStep     = pInv.maxStep
-	low         = pInv.boundsLow
-	high        = pInv.boundsHigh
-	alpha       = pInv.alpha
-
-	His = getGNhis(maxIter,pcgMaxIter)
-	#---------------------------------------------------------------------------
-	#  Initialization.
-	#---------------------------------------------------------------------------
-
-	Active = (mc .<=low) .| (mc.>=high)  # Compute active set
-
-
-	## evaluate function and derivatives
-	sig,dsig = pInv.modelfun(mc)
-	if isempty(indCredit)
-		Dc,F,dF,d2F,pMis,tMis = computeMisfitZs(sig,pMis,true)
-	else
-		Dc,F,dF,d2F,pMis,tMis,indDebit = computeMisfitZs(sig,pMis,true,indCredit=indCredit)
-	end
-	dF = dsig'*dF
-	dumpResults(mc,Dc,0,pInv,pMis) # dump initial model and dpred0
-
-	# compute regularizer
-
-	tReg = @elapsed R,dR,d2R = computeRegularizer(pInv.regularizer,mc,pInv.mref,pInv.MInv,alpha)
-
-	# objective function
-	Jc  = F  + R
-	gc  = dF + dR
-
-	F0 = F; J0 = Jc
-	############################################################################
-	##  Outer iteration.                                                        #
-	############################################################################
-	iter = 0
-	outerFlag = -1; stepNorm=0.0
-
-	outStr = @sprintf("\n %4s\t%08s\t%08s\t%08s\t%08s\t%08s\n",
-					  	"i.LS", "F", "R","alpha[1]","Jc/J0","#Active")
-	updateHis!(0,His,Jc,norm(projGrad(gc,mc,low,high)),F,Dc,R,alpha[1],count(!iszero, Active),0.0,-1,tMis,tReg)
-
-	if out>=2; print(outStr); end
-	f = open("jInv.out", "w")
-	write(f, outStr)
-	close(f)
-
-	while outerFlag == -1
-
-		iter += 1
-		outStr = @sprintf("%3d.0\t%3.2e\t%3.2e\t%3.2e\t%3.2e\t%3d\n",
-		         iter, F, R,alpha[1],Jc/J0,count(!iszero, Active))
-		if out>=2; print(outStr); end
-		f = open("jInv.out", "a")
-		write(f, outStr)
-		close(f)
-
-		# solve linear system to find search direction
-		His.timeLinSol[iter+1] += @elapsed  delm,hisLinSol = solveGN(gc,pMis,pInv,sig,dsig,d2F,d2R,Active)
-		push!(His.hisLinSol,hisLinSol)
-
-		# scale step
-		if maximum(abs.(delm)) > maxStep; delm = delm./maximum(abs.(delm))*maxStep; end
-
-		# take gradient direction in the active cells
-		ga = -gc[mc .== low]
-		if !isempty(ga)
-			if maximum(abs.(ga)) > maximum(abs.(delm)); ga = ga./maximum(abs.(ga))*maximum(abs.(delm)); end
-			delm[mc .== low] = ga
-		end
-		ga = -gc[mc .== high]
-		if !isempty(ga)
-			if maximum(abs.(ga)) > maximum(abs.(delm)); ga = ga./maximum(abs.(ga))*maximum(abs.(delm)); end
-			delm[mc .== high] = ga
-		end
-
-		## Begin projected Armijo line search
-		muLS = 1; lsIter = 1; mt = zeros(size(mc)); Jt = Jc
-		while true
-			mt = mc + muLS*delm
-			mt[mt.<low]  = low[mt.<low]
-			mt[mt.>high] = high[mt.>high]
-
-			His.timeReg[iter+1] += @elapsed R,dR,d2R = computeRegularizer(pInv.regularizer,mt,pInv.mref,pInv.MInv,alpha)
-
-			if R!=Inf # to support barrier functions.
-				## evaluate function
-
-				sigt, = pInv.modelfun(mt)
-				if isempty(indCredit)
-					Dc,F,dF,d2F,pMis,tMis = computeMisfitZs(sigt,pMis,false)
-				else
-					Dc,F,dF,d2F,pMis,tMis,indDebit = computeMisfitZs(sigt,false,indCredit=indCredit)
-				end
-				His.timeMisfit[iter+1,:]+=tMis
-
-
-				# objective function
-				Jt  = F  + R
-				if out>=2;
-					println(@sprintf( "   .%d\t%3.2e\t%3.2e\t\t\t%3.2e",
-						lsIter, F,       R,       Jt/J0))
-				end
-
-				if Jt < Jc
-					break
-				end
-			else
-				Jt  = R;
-				F = 0.0;
-				if out>=2;
-					println(@sprintf( "   .%d\t%3.2e\t%3.2e\t\t\t%3.2e",
-						lsIter, F,       R,       Jt/J0))
-				end
-			end
-			muLS /=2; lsIter += 1
-			if lsIter > 6
-			    outerFlag = -2
-				break
-			end
-		end
-		## End Line search
-
-		## Check for termination
-		stepNorm = norm(mt-mc,Inf)
-		mc = mt
-		Jc = Jt
-
-		sig, dsig = pInv.modelfun(mc)
-
-		Active = (mc .<=low) .| (mc.>=high)  # Compute active set
-
-		#  Check stopping criteria for outer iteration.
-		updateHis!(iter,His,Jc,-1.0,F,Dc,R,alpha[1],count(!iszero, Active),stepNorm,lsIter,tMis,tReg)
-
-		dumpResults(mc,Dc,iter,pInv,pMis);
-		if stepNorm < stepTol
-			outerFlag = 1
-			break
-		elseif iter >= maxIter
-			break
-		end
-		# Evaluate gradient
-
-		if isempty(indCredit)
-			His.timeGradMisfit[iter+1]+= @elapsed dF = computeGradMisfit(sig,Dc,pMis)
-		else
-			His.timeGradMisfit[iter+1]+= @elapsed dF = computeGradMisfit(sig,Dcp,pMis,indDebit)
-		end
-
-		dF = dsig'*dF
-		gc = dF + dR
-
-
-		His.dJ[iter+1] = norm(projGrad(gc,mc,low,high))
-
-	end # while outer_flag == 0
-
-	if out>=1
-		if outerFlag==-1
-			println("projGN iterated maxIter=$maxIter times but reached only stepNorm of $(stepNorm) instead $(stepTol)." )
-		elseif outerFlag==-2
-			println("projGN stopped at iteration $iter with a line search fail.")
-		elseif outerFlag==1
-			println("projGN reached desired accuracy at iteration $iter.")
-		end
-	end
-
-	return mc,Dc,outerFlag,His
-end  # Optimization code
-
-function computeMisfitZs(sigmaRef::RemoteChannel,
-                        pMisRef::RemoteChannel,
-				      dFRef::RemoteChannel,
-                  doDerivative,doClear::Bool=false)
-#=
- computeMisfit for single forward problem
-
- Note: model (including interpolation matrix) and forward problems are RemoteRefs
-=#
-
-    rrlocs = [ pMisRef.where  dFRef.where]
-    if !all(rrlocs .== myid())
-        warn("computeMisfit: Problem on worker $(myid()) not all remote refs are stored here, but rrlocs=$rrlocs")
-    end
-
-    sigma = fetch(sigmaRef)
-    pMis  = take!(pMisRef)
-
-    Dc,F,dFi,d2F,pMis,times = computeMisfitZs(sigma,pMis,doDerivative,doClear)
-
-    put!(pMisRef,pMis)
-    # add to gradient
-    if doDerivative
-        dF = take!(dFRef)
-        put!(dFRef,dF += dFi)
-    end
-    # put predicted data and d2F into remote refs (no need to communicate them)
-    Dc  = remotecall(identity,myid(),Dc)
-    d2F = remotecall(identity,myid(),d2F)
-
-    return Dc,F,d2F,times
-end
-
-
-function computeMisfitZs(sigma,
-	pMisRefs::Array{RemoteChannel,1},
-	doDerivative::Bool=true;
-	indCredit::AbstractVector=1:length(pMisRefs),
-    printProgress::Bool=false)
-#=
-computeMisfit for multiple forward problems
-
-This method runs in parallel (iff nworkers()> 1 )
-
-Note: ForwardProblems and Mesh-2-Mesh Interpolation are RemoteRefs
-    (i.e. they are stored in memory of a particular worker).
-=#
-
-    n = 1
-
-	F   = 0.0
-	dF  = (doDerivative) ? zeros(length(sigma)) : []
-	d2F = Array{Any}(undef, length(pMisRefs));
-	Dc  = Array{Future}(undef,size(pMisRefs))
-
-	indDebit = []
-	updateRes(Fi,idx) = (F+=Fi;push!(indDebit,idx))
-	updateDF(x) = (dF+=x)
-
-    workerList = []
-    for k=indCredit
-        push!(workerList,pMisRefs[k].where)
-    end
-    workerList = unique(workerList)
-    sigRef = Array{RemoteChannel}(undef,maximum(workers()))
-	dFiRef = Array{RemoteChannel}(undef,maximum(workers()))
-
-	times = zeros(4);
-	updateTimes(tt) = (times+=tt)
-
-	@sync begin
-		for p=workerList
-			@async begin
-				# communicate model and allocate RemoteRef for gradient
-				sigRef[p] = initRemoteChannel(identity,p,sigma)   # send conductivity to workers
-				dFiRef[p] = initRemoteChannel(zeros,p,length(sigma)) # get remote Ref to part of gradient
-				# solve forward problems
-				for idx in indCredit
-					if pMisRefs[idx].where==p
-						Dc[idx],Fi,d2F[idx],tt = remotecall_fetch(computeMisfitZs,p,sigRef[p],pMisRefs[idx],dFiRef[p],doDerivative)
-						updateRes(Fi,idx)
-						updateTimes(tt)
-                        if printProgress && ((length(indDebit)/length(indCredit)) > n*0.1)
-                            if doDerivative
-                                println("Misfit and gradients computed for $(10*n)% of forward problems")
-                            else
-                                println("Misfit and gradients computed for $(10*n)% of forward problems")
-                            end
-                            n += 1
-                        end
-					end
-				end
-
-				# sum up gradients
-				if doDerivative
-					updateDF(fetch(dFiRef[p]))
-				end
-			end
-		end
-	end
-	return Dc,F,dF,d2F,pMisRefs,times,indDebit
-end
-
-function computeMisfitZs(sig,
-                       pMis::MisfitParam,doDerivative::Bool=true, doClear::Bool=false;
-                       printProgress=false)
-    if printProgress
-        error("Print progress only works with multiple pFors")
-    end
-#=
- computeMisfit for a single forward problem. Everything is stored in memory on the node executing this function.
-=#
-
-    times = zeros(4)
-    sigma,dsigma = pMis.modelfun(sig)
-    times[1] = @elapsed   sigmaloc = interpGlobalToLocal(sigma,pMis.gloc.PForInv,pMis.gloc.sigmaBackground);
-    times[2] = @elapsed   Dc,pMis.pFor  = getData(sigmaloc,pMis.pFor)      # fwd model to get predicted data
-    times[3] = @elapsed   F,dF,d2F = pMis.misfit(Dc,pMis.dobs,pMis.Wd)
-    if doDerivative
-        times[4] = @elapsed dF = dsigma'*interpLocalToGlobal(getSensTMatVec(dF,sigmaloc,pMis.pFor),pMis.gloc.PForInv)
-    end
-
-    if doClear; clear!(pMis.pFor.Ainv); end
-    return Dc,F,dF,d2F,pMis,times
-end
-
-
-function computeMisfitZs(sigmaRef::RemoteChannel,
-                        pMisRef::RemoteChannel,
-				      dFRef::RemoteChannel,
-                  doDerivative,doClear::Bool=false)
-#=
- computeMisfit for single forward problem
-
- Note: model (including interpolation matrix) and forward problems are RemoteRefs
-=#
-
-    rrlocs = [ pMisRef.where  dFRef.where]
-    if !all(rrlocs .== myid())
-        warn("computeMisfit: Problem on worker $(myid()) not all remote refs are stored here, but rrlocs=$rrlocs")
-    end
-
-    sigma = fetch(sigmaRef)
-    pMis  = take!(pMisRef)
-
-    Dc,F,dFi,d2F,pMis,times = computeMisfitZs(sigma,pMis,doDerivative,doClear)
-
-    put!(pMisRef,pMis)
-    # add to gradient
-    if doDerivative
-        dF = take!(dFRef)
-        put!(dFRef,dF += dFi)
-    end
-    # put predicted data and d2F into remote refs (no need to communicate them)
-    Dc  = remotecall(identity,myid(),Dc)
-    d2F = remotecall(identity,myid(),d2F)
-
-    return Dc,F,d2F,times
-end
-
-
-function computeMisfitZs(sigma,
-	pMisRefs::Array{RemoteChannel,1},
-	doDerivative::Bool=true;
-	indCredit::AbstractVector=1:length(pMisRefs),
-    printProgress::Bool=false)
-#=
-computeMisfit for multiple forward problems
-
-This method runs in parallel (iff nworkers()> 1 )
-
-Note: ForwardProblems and Mesh-2-Mesh Interpolation are RemoteRefs
-    (i.e. they are stored in memory of a particular worker).
-=#
-
-    n = 1
-
-	F   = 0.0
-	dF  = (doDerivative) ? zeros(length(sigma)) : []
-	d2F = Array{Any}(undef, length(pMisRefs));
-	Dc  = Array{Future}(undef,size(pMisRefs))
-
-	indDebit = []
-	updateRes(Fi,idx) = (F+=Fi;push!(indDebit,idx))
-	updateDF(x) = (dF+=x)
-
-    workerList = []
-    for k=indCredit
-        push!(workerList,pMisRefs[k].where)
-    end
-    workerList = unique(workerList)
-    sigRef = Array{RemoteChannel}(undef,maximum(workers()))
-	dFiRef = Array{RemoteChannel}(undef,maximum(workers()))
-
-	times = zeros(4);
-	updateTimes(tt) = (times+=tt)
-
-	@sync begin
-		for p=workerList
-			@async begin
-				# communicate model and allocate RemoteRef for gradient
-				sigRef[p] = initRemoteChannel(identity,p,sigma)   # send conductivity to workers
-				dFiRef[p] = initRemoteChannel(zeros,p,length(sigma)) # get remote Ref to part of gradient
-				# solve forward problems
-				for idx in indCredit
-					if pMisRefs[idx].where==p
-						Dc[idx],Fi,d2F[idx],tt = remotecall_fetch(computeMisfitZs,p,sigRef[p],pMisRefs[idx],dFiRef[p],doDerivative)
-						updateRes(Fi,idx)
-						updateTimes(tt)
-                        if printProgress && ((length(indDebit)/length(indCredit)) > n*0.1)
-                            if doDerivative
-                                println("Misfit and gradients computed for $(10*n)% of forward problems")
-                            else
-                                println("Misfit and gradients computed for $(10*n)% of forward problems")
-                            end
-                            n += 1
-                        end
-					end
-				end
-
-				# sum up gradients
-				if doDerivative
-					updateDF(fetch(dFiRef[p]))
-				end
-			end
-		end
-	end
-	return Dc,F,dF,d2F,pMisRefs,times,indDebit
-end
-
-
-function computeMisfitZs(sigma,pMis::Array,doDerivative::Bool=true,indCredit=collect(1:length(pMis));
-                       printProgress=false)
-	#
-	#	computeMisfit for multiple forward problems
-	#
-	#	This method runs in parallel (iff nworkers()> 1 )
-	#
-	#	Note: ForwardProblems and Mesh-2-Mesh Interpolation are stored on the main processor
-	#		  and then sent to a particular worker, which returns an updated pFor.
-	#
-	numFor   = length(pMis)
- 	F        = 0.0
-    dF       = (doDerivative) ? zeros(length(sigma)) : []
- 	d2F      = Array{Any}(undef,numFor)
- 	Dc       = Array{Any}(undef,numFor)
-	indDebit = []
-
-	# draw next problem to be solved
-	nextidx() = (idx = (isempty(indCredit)) ? -1 : pop!(indCredit))
-
- 	updateRes(Fi,dFi,idx) = (F+=Fi; dF= (doDerivative) ? dF+dFi : []; push!(indDebit,idx))
-
-	times = zeros(4);
-	updateTimes(tt) = (times+=tt)
-
- 	@sync begin
- 		for p = workers()
- 				@async begin
- 					while true
- 						idx = nextidx()
- 						if idx == -1
- 							break
- 						end
- 							Dc[idx],Fi,dFi,d2F[idx],pMis[idx],tt = remotecall_fetch(computeMisfitZs,p,sigma,pMis[idx],doDerivative)
- 							updateRes(Fi,dFi,idx)
-							updateTimes(tt)
- 					end
- 				end
- 		end
- 	end
-
- 	return Dc,F,dF,d2F,pMis,times,indDebit
- end
