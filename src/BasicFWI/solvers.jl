@@ -93,6 +93,7 @@ end
 
 export solveInverseProblemZs
 function solveInverseProblemZs(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
+	srcLocations::Array{Int},
 	nfreq::Int64, nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
 	boundsHigh::Float64, boundsLow::Float64, resultsFilename::String, plotting::Bool=false,
 	plottingFunc::Function=dummy)
@@ -100,7 +101,7 @@ function solveInverseProblemZs(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Arra
 		boundsHigh, boundsLow, plotting, plottingFunc);
 
 	# Run one sweep of a frequency continuation procedure.
-	mc, Dc = freqContZs(copy(mref[:]), pInv, pMis, nfreq, 4,Iact,mback, plotIntermediateResults, resultsFilename, 1);
+	mc, Dc = freqContZs(copy(mref[:]), pInv, pMis, srcLocations, nfreq, 4,Iact,mback, plotIntermediateResults, resultsFilename, 1);
 
 	return mc, Dc, pInv, Iact, mback, map(x->fetch(x), pMis);
 end
