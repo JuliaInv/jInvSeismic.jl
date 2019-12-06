@@ -74,14 +74,10 @@ println("Size m: " , size(m))
 h = Mr.h;
 n = Mr.n;
 # omega = 0.3*2*pi*[2.0;5.0; 10.0;20.0;25.0]
-# omega = 0.3*2*pi*[2.0;5.0;]
 omega = 2*pi*[2.0;2.5;3.5;4.5;6.0;]
 nfreq = length(omega)
 # generate sources
-srcVol = 1e4;
-q = zeros(tuple(n.+1...)); q[padx+1:4:end-padx-1,1] .= srcVol
-srcLocations = findall(a -> a==srcVol, q[:,1]);
-println("src loca:" , srcLocations);
+q = zeros(tuple(n.+1...)); q[padx+1:4:end-padx-1,1] .= 1e4
 print(size(q))
 Q = sdiag(vec(q))
 print(size(Q))
