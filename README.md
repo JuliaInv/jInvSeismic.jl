@@ -9,27 +9,28 @@
 
 jInvSeismic consists of submodules:
 
-1. `jInvSeismic.EikonalInv` - A Julia package for solving the inverse eikonal equation on a regular rectangular mesh.
+1. `jInvSeismic.FWI` - A Julia package for solving the Full Waveform Inversion on a regular rectangular mesh. For forward modelling and sensitivities it uses either a direct solver or a block Shifted Laplacian Multigrid preconditioner with BiCGSTAB.
+2. `jInvSeismic.EikonalInv` - A Julia package for solving the inverse eikonal equation on a regular rectangular mesh.
 For forward modelling and sensitivities it uses the fast marching algorithm for the factored eikonal equation.
-2. `jInvSeismic.BasicFWI` - a lightweight basic Full Waveform Inversion in Julia.
-3. `jInvSeismic.Utils` - utility functions for seismic inversions.
+3. `jInvSeismic.BasicFWI` - a lightweight basic Full Waveform Inversion in Julia.
+4. `jInvSeismic.Utils` - utility functions for seismic inversions.
 
 # Literature
 The EikonalInv package is based on the following paper (please cite if you are using the package):
 
 Eran Treister and Eldad Haber, A fast marching algorithm for the factored eikonal equation, Journal of Computational Physics, 324, 210-225, 2016.
 
-The package is also used in the following papers in joint inversions:
+The EikonalInv and FWI packages are used in the following papers in joint inversions:
+
 Lars Ruthotto, Eran Treister and Eldad Haber, jInv--a flexible Julia package for PDE parameter estimation, SIAM Journal on Scientific Computing, 39 (5), S702-S722, 2017. 
 
 Eran Treister and Eldad Haber, Full waveform inversion guided by travel time tomography, SIAM Journal on Scientific Computing, 39 (5), S587-S609, 2017.
 
 # Requirements
 
-This package is inteded to use with Julia versions 0.7.
+This package is inteded to use with Julia versions 1.2.
 
 This package is an add-on for [`jInv`](https://github.com/JuliaInv/jInv.jl), which needs to be installed. 
-This is a basic FWI package, mostly used for teaching.
 
 # Installation
 
