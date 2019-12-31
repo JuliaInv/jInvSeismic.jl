@@ -50,7 +50,7 @@ function startEx()
 	figure(22);
 	imshow(mref'); colorbar();
 	#
-	mc, Dc, pInv, Iact, mback, pMis = solveInverseProblemZs(pForp, Dobs, Wd, nfreq, nx, nz, mref,
+	mc, Dc, pInv, Iact, mback, pMis = solveInverseProblemZs2(pForp, Dobs, Wd, nfreq, nx, nz, mref,
 								Mr, 0.5, 0.035,"ES_FWI.dat", true, plotModelResult);
 
 

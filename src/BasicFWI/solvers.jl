@@ -126,6 +126,29 @@ function solveInverseProblemZs(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Arra
 end
 
 
+export solveInverseProblemZs2
+function solveInverseProblemZs2(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
+	nfreq::Int64, nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
+	boundsHigh::Float64, boundsLow::Float64, resultsFilename::String, plotting::Bool=false,
+	plottingFunc::Function=dummy)
+
+	regfunFourthOrder(m,mref,M) = wFourthOrderSmoothing(m,mref,M,Iact=Iact,C=[]);
+	pInv, pMis, plotIntermediateResults, Iact, mback = getFreqContParams(pFor, Dobs, Wd, nfreq, nx, nz, mref, Mr,
+		boundsHigh, boundsLow, plotting, plottingFunc);
+
+	regfunDiff(m,mref,M) = wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
+
+	# Run one sweep of a frequency continuation procedure.
+	mc, Dc = freqContZs2(copy(mref[:]), pInv, pMis[1:2], 2, 4,Iact,mback, plotIntermediateResults, resultsFilename, 1);
+
+	pInv.regularizer = regfunDiff;
+	# Run one sweep of a frequency continuation procedure.
+	mc, Dc = freqContZs2(copy(mc[:]), pInv, pMis, nfreq, 4,Iact,mback, plotIntermediateResults, resultsFilename, 1);
+
+	return mc, Dc, pInv, Iact, mback, map(x->fetch(x), pMis);
+end
+
+
 export solveInverseProblem
 function solveInverseProblem(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
 	nfreq::Int64, nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
