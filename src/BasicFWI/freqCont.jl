@@ -2,6 +2,7 @@ export freqContBasic;
 export freqContTraceEstimation;
 using jInv.InverseSolve
 using Printf
+using JLD
 using KrylovMethods
 global inx = 1;
 """
@@ -311,11 +312,11 @@ end
 
 
 
-
-function calculatedZ2x(x, Z1)
-	A = zeros(p*n);
+alpha = 1e-5;
+function calculatedZ2x(x, Z1,m,p,n)
+	A = complex(zeros(p*n));
 	for i=1:p
-		v = zeros(m*n);
+		v = complex(zeros(m*n));
 		for j =1:m
 			v[j] = Z1[j, i];
 		end
@@ -330,14 +331,14 @@ function calculatedZ2x(x, Z1)
 	return A;
 end
 
-function coeffsZ2(x, Z1)
+function coeffsZ2(x, Z1, M::Vector, WdSqr::Vector,m,p,n)
 	Z = Z1 * reshape(x, (p,n));
 	Z = reshape(Z, (m*n, 1));
-	return calculatedZ2x(M' * (M * Z), Z1) + alpha * x;
+	return calculatedZ2x(sum(map((M_i, WdSqr_i) -> (M_i' .* WdSqr_i') * (M_i * Z), M, WdSqr)), Z1,m , p, n) + alpha * x;
 end
 
 
-function calculatedZ1(Z2)
+function calculatedZ1(Z2,m,p,n)
 	A = zeros(m*p, m*n);
 
 	for mj = 1:p
@@ -355,11 +356,11 @@ function calculatedZ1(Z2)
 	return A;
 end
 
-function calculatedZ1x(x, Z2)
-	A = zeros(m*p);
+function calculatedZ1x(x, Z2, m , p, n)
+	A = complex(zeros(m*p));
 
 	for mj = 1:p
-		v = zeros(m*n);
+		v = complex(zeros(m*n));
 		for j =1:n
 			v[m*(j-1) + 1] = Z2[mj, j];
 		end
@@ -373,39 +374,51 @@ function calculatedZ1x(x, Z2)
 	return A;
 end
 
-function coeffsZ1(x, Z2)
+function coeffsZ1(x, Z2, M::Vector, WdSqr::Vector, m , p ,n)
 	Z = reshape(x, (m,p)) * Z2;
 	Z = reshape(Z, (m*n, 1));
-	return calculatedZ1x(M' * (M * Z), Z2) + alpha * x;
+	return calculatedZ1x(sum(map((M_i, WdSqr_i) -> (M_i' .* WdSqr_i') * (M_i * Z), M, WdSqr)), Z2, m, p, n) + alpha * x;
 end
 
-function minimize(Z1 ,Z2)
+function minimize(Dobs::Vector, PHinv::Vector, Z1::Array ,Z2::Array,
+	WdSqr::Vector,m, p,n)
+	println(PHinv[1])
 	t = 1e-2;
-	misfit = norm(Q - M * reshape(Z1 * Z2, (m*n , 1))) + alpha * norm(Z1) + alpha * norm(Z2);
+	misfitCalc() = sum(map((WdSqr_i, Dobs_i, PHinv_i) ->
+	norm(WdSqr_i.* Dobs_i[:,1] - WdSqr_i.* PHinv_i * reshape(Z1 * Z2, (m*n , 1))),
+	WdSqr, Dobs, PHinv)) + alpha * norm(Z1) + alpha * norm(Z2);
 	misfitNorm = 10;
+	misfit = misfitCalc();
 	println("misfit at start: ", misfit);
-	while misfitNorm > t
+	i = 0;
+	while misfitNorm > t && i<5
 		prevMisfit = misfit;
-		rhs = calculatedZ1x(M' * Q, Z2);
-		res = KrylovMethods.cg((x)-> coeffsZ1(x, Z2) , Vector(rhs[:]), tol=1e-8, maxIter=100,  x=reshape(Z1, (m*p,1))[:], out=2)[1];
+		rhs = calculatedZ1x(sum(map((WdSqr_i, Dobs_i, PHinv_i) ->
+		WdSqr_i' .* PHinv_i' * Dobs_i,WdSqr, Dobs, PHinv)), Z2, m , p, n);
+		# rhs = real(rhs);
+		res = KrylovMethods.cg((x)-> coeffsZ1(x, Z2, PHinv, WdSqr,m, p,n) ,
+			Vector(rhs[:]), tol=1e-8, maxIter=100,  x=complex(reshape(Z1, (m*p,1))[:]), out=2)[1];
 		Z1 = reshape(res, (m, p));
-		misfit = norm(Q - M * reshape(Z1 * Z2, (m*n , 1))) + alpha * norm(Z1) + alpha * norm(Z2);
+		# misfit = norm(WdSqr.*Dobs - WdSqr.*PHinv * reshape(Z1 * Z2, (m*n , 1))) + alpha * norm(Z1) + alpha * norm(Z2);
 
-		println(misfit);
+		println(misfitCalc());
 
-		rhs = calculatedZ2x(M' * Q, Z1);
-		res = KrylovMethods.cg((x)-> coeffsZ2(x, Z1) , Vector(rhs[:]), tol=1e-8, maxIter=100, x=reshape(Z2, (p*n,1))[:], out=2)[1];
+		rhs = calculatedZ2x(sum(map((WdSqr_i, Dobs_i, PHinv_i) ->
+		WdSqr_i' .* PHinv_i' * Dobs_i,WdSqr, Dobs, PHinv)), Z1, m , p, n);
+		# rhs = real(rhs);
+		res = KrylovMethods.cg((x)-> coeffsZ2(x, Z1, PHinv, WdSqr,m, p,n) , Vector(rhs[:]), tol=1e-8, maxIter=100,
+			x=complex(reshape(Z2, (p*n,1))[:]), out=2)[1];
 		Z2 = reshape(res, (p, n));
 
-		misfit = norm(Q - M * reshape(Z1 * Z2, (m*n , 1))) + alpha * norm(Z1) + alpha * norm(Z2);
+		# misfit = norm(WdSqr.*Dobs - WdSqr.*PHinv * reshape(Z1 * Z2, (m*n , 1))) + alpha * norm(Z1) + alpha * norm(Z2);
 
+		misfit = misfitCalc();
 		println(misfit);
 		misfitNorm = abs(prevMisfit - misfit);
+		i = i+1;
 	end
 	return Z1, Z2;
 end
-
-
 
 
 function freqContZs2(mc, pInv::InverseParam, pMis::Array{RemoteChannel},nfreq::Int64, windowSize::Int64,
@@ -417,6 +430,8 @@ HIS = [];
 
 pFor = fetch(pMis[1]).pFor
 mSizeMat = pFor.Mesh.n .+ 1;
+m = mSizeMat[1];
+n = mSizeMat[2];
 mSizeVec = mSizeMat[1] * mSizeMat[2];
 println("Mr size:" ,  pFor.Mesh.n)
 Z = copy(pFor.originalSources);
@@ -427,8 +442,7 @@ pFor = nothing
 nsrc = size(Z, 2);
 beta = 2e-3;
 p = 10;
-Z1 = ones((mSizeMat[1], p));
-Z2 = ones((p, mSizeMat[2]));
+
 for freqIdx = startFrom:nfreq
 	println("start freqCont Zs iteration from: ", freqIdx)
 	tstart = time_ns();
@@ -441,9 +455,12 @@ for freqIdx = startFrom:nfreq
 
 
 	println("\n======= New Continuation Stage: selecting continuation batches: ",reqIdx1," to ",reqIdx2,"=======\n");
+	runningProcs = map(x->x.where, pMis[currentProblems]);
 
 
 	for j=1:5
+		Z1 = rand(Float64,(mSizeMat[1], p));
+		Z2 = rand(Float64, (p, mSizeMat[2]));
 		pMisCurrent = map(fetch, pMis[currentProblems]);
 		pForpCurrent =  map(x->x.pFor, pMisCurrent);
 		Dp,pForp = getData(vec(mc), pForpCurrent);
@@ -452,10 +469,14 @@ for freqIdx = startFrom:nfreq
 		numOfCurrentProblems = size(currentProblems, 1);
 		map((pm,pf) -> pm.pFor = pf , pMisCurrent, pForCurrent);
 		HinvPs = Vector{Array}(undef, numOfCurrentProblems);
-
+		pMisTemp = Array{RemoteChannel}(undef, length(currentProblems));
 		t1 = time_ns();
 		for freqs = 1:numOfCurrentProblems
 			HinvPs[freqs] = (pForCurrent[freqs].Ainv[1])' \ Matrix(pForCurrent[freqs].Receivers);
+			println("size hinv:", size(HinvPs[freqs]))
+			save("SavedVals.jld","hinv",HinvPs[freqs]', "dobs",pMisCurrent[freqs].dobs[:,1,1],
+			"wd",pMisCurrent[freqs].Wd[:,1],"q1",pForCurrent[freqs].Sources[:, 1]);
+			throw(Exception())
 			println("HINVP done");
 		end
 		e1 = time_ns();
@@ -509,111 +530,126 @@ for freqIdx = startFrom:nfreq
 		# 	end
 		# 	return res;
 		# end
-
-		for s = 1:nsrc
-			for i=1:numOfCurrentProblems
-				WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
-				Ap[i] = HinvPs[i]
-				diags[i] =  WdSqr;
-				HpiZ1 = AiMultVec((HinvPs[i] * WdSqr)', Z1);
-				HpiZ1 = HpiZ1';
-				B[i] =  HpiZ1 * pMisArr[i].dobs[:,s,1]
-					- HpiZ1 *(HinvPs[i]' * pMisArr[i].pFor.originalSources[:, s]);
-			end
-
-
-			AiZ1 = AiMultVec(Ai', Z1);
-			function AxZ2(x)
-				AiZ1 = AiMultVec(sqrt.(diag) * Ai', Z1);
-				return real(sum(map((Ai, diag) ->  AiZ1' * (AiZ1 * x) + 2*beta.* x, Ap, diags)))
-			end
-			# AxZ2(x) =
-			Z2 = KrylovMethods.cg(AxZ2, real(sum(B)), x=Z2, tol=1e-8, maxIter=100)[1];
-			println("Z2 succesful");
-			RHSm = [Z2 * Z2' zeros((p, p)); zeros((p, p)) I];
-			RHSminv = inv(RHSm);
-			for i=1:numOfCurrentProblems
-				WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
-				Ap[i] = HinvPs[i]
-				diags[i] =  WdSqr;
-				B[i] =  HinvPs[i] * WdSqr * pMisArr[i].dobs[:,s,1] * Z2' - HinvPs[i] * WdSqr *(HinvPs[i]' * pMisArr[i].pFor.originalSources[:, s] * Z2') * RHSminv;
-			end
-
-			Z1 = KrylovMethods.cg((x-> real(sum(map((Ai, diag) ->  Ai * diag * (Ai' * x) + 2*beta.* x, Ap, diags)))), real(sum(B)), x=Z1, tol=1e-8, maxIter=100)[1];
-
+		pMisTemp = Array{RemoteChannel}(undef, numOfCurrentProblems);
+		for i=1:numOfCurrentProblems
+			pMisCurrent[i].pFor.Sources = Array{ComplexF64}(undef, (m*n, nsrc));
 		end
-		e3 = time_ns();
-		println("runtime of minimizeZs");
-		println((e3 - t3)/1.0e9);
+		for s = 1:nsrc
+			WdSqr = Vector{Array}(undef, numOfCurrentProblems);
+			for i=1:numOfCurrentProblems
+				WdSqr[i] = 2 .* pMisCurrent[i].Wd[:,s] .^ 2;
+			end
+			println("size dobs: ", size(pMisCurrent[1].dobs[:,s,1]));
+			Z1,Z2 = minimize(map((pm, HinvPs_i) -> pm.dobs[:,s,1] - HinvPs_i' * pm.pFor.Sources[:,s], pMisCurrent, HinvPs), map(h-> h', HinvPs), Z1, Z2, WdSqr,
+			mSizeMat[1], p , mSizeMat[2]);
 
 
+			for i=1:numOfCurrentProblems
+				pMisCurrent[i].pFor.Sources[:,s] = complex(pMisCurrent[i].pFor.Sources[:, s]) + reshape(Z1 * Z2, (m*n, 1));
+				# Sources[:,s] = newSources[(s - 1) % nworkers() + 1][floor(Int64, (s - 1) / nworkers()) + 1];
+				pMisTemp[i] = initRemoteChannel(x->x, runningProcs[i], pMisCurrent[i]);
+			end
+		end
+		pMis[currentProblems] = pMisTemp;
 
-		#
-		# runningProcs = map(x->x.where, pMisTemp);
-		# pMisCurrent = map(fetch, pMisTemp);
-		# pForpCurrent =  map(x->x.pFor, pMisCurrent);
-		# eta = 20.0;
-		# Dobs = map(x->x.dobs[:,:], pMisCurrent);
-		# Wd = map(x->x.Wd[:,:], pMisCurrent);
-		# DobsNew = copy(Dobs[:]);
-		# nsrc = size(DobsNew[1],2);
-		# TEmat = rand([-1,1],(nsrc,10));
-		# WdEta = eta.*Wd;
-		# DpNew, = getData(vec(mc),pForpCurrent);
-		# DobsTemp = Array{Array}(undef, numOfCurrentProblems);
-		# WdNew = Array{Array}(undef, numOfCurrentProblems);
-		# for i=1:numOfCurrentProblems
-		# 	DobsTemp[i] = fetch(DpNew[i]);
-		# 	for s=1:nsrc
-		# 		etaM1 = 2 .*diagm(0 => vec(Wd[1][:,1])).*diagm(0 => vec(Wd[1][:,1]));
-		# 		println("SIZE OLD ETAM: ");
-		# 		println(size(etaM1));
-		# 		etaM = 2 * eta .*diagm(0 => vec(Wd[i][:,s])).*diagm(0 => vec(Wd[i][:,s]));
-		# 		println("SIZE NEW ETAM: ");
-		# 		println(size(etaM));
-		# 		A = (2 .*I + etaM)
-		# 		b = (etaM)*(A\Dobs[i][:,s])
-		# 		DobsNew[i][:,s] = 2 .* (A\DobsTemp[i][:,s]) + b;
-		# 	end
-		# 	DobsNew[i] = DobsNew[i][:,:] * TEmat;
-		# 	WdNew[i] = ones((size(DobsNew[i], 1), 10))./sqrt(10);
-		# 	println("SIZE OLD WD: ");
-		# 	println(size(WdNew[i]));
-		# 	WdNew[i] = 1.0./(abs.(real.(DobsNew[i])) .+ 1e-1*mean(abs.(DobsNew[i])));
-		# 	WdNew[i] = WdNew[i] ./ sqrt(10);
-		# 	println("SIZE NEW WD: ");
-		# 	println(size(WdNew[i]));
-		# end
-		#
-		# pForCurrent = Array{RemoteChannel}(undef, numOfCurrentProblems);
-		# for i=1:numOfCurrentProblems
-		# 	pForTemp = pForpCurrent[i];
-		# 	pForTemp.Sources = pForTemp.ExtendedSources * TEmat;
-		# 	pForCurrent[i] = initRemoteChannel(x->x, runningProcs[i], pForTemp);
-		# end
-		#
-		#
-		# pMisTemp2 = getMisfitParam(pForCurrent, WdNew, DobsNew, SSDFun, Iact, mback);
-		#
-		# println("size of exsources:" , size(fetch(pMisTemp2[1]).pFor.Sources));
-		#
-		Dc,F,dF,d2F,pMisNone,times,indDebit = computeMisfit(mc, map(pm -> fetch(pm), pMisTemp));
+			println("IM HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1111");
 
-		println("Misfit at GN ", j, "frequncy idx: ", freqIdx, " Is: ", F);
-
-
-
-		pInv.mref = mc[:];
-		t4 = time_ns();
-		mc,Dc,flag,His = projGNCG(mc,pInv,pMisTemp,dumpResults = dumpGN);
-		e4 = time_ns();
-		println((t4 - e4)/1.0e9);
 		Dc,F,dF,d2F,pMisNone,times,indDebit = computeMisfit(mc, map(pm -> fetch(pm), pMisTemp));
 
 		println("Misfit after GN ", j, "frequncy idx: ", freqIdx, " Is: ", F);
-
-		pMis[currentProblems] = pMisTemp;
-		clear!(pMisTemp);
+		#
+		# 	AiZ1 = AiMultVec(Ai', Z1);
+		# 	function AxZ2(x)
+		# 		AiZ1 = AiMultVec(sqrt.(diag) * Ai', Z1);
+		# 		return real(sum(map((Ai, diag) ->  AiZ1' * (AiZ1 * x) + 2*beta.* x, Ap, diags)))
+		# 	end
+		# 	# AxZ2(x) =
+		# 	Z2 = KrylovMethods.cg(AxZ2, real(sum(B)), x=Z2, tol=1e-8, maxIter=100)[1];
+		# 	println("Z2 succesful");
+		# 	RHSm = [Z2 * Z2' zeros((p, p)); zeros((p, p)) I];
+		# 	RHSminv = inv(RHSm);
+		# 	for i=1:numOfCurrentProblems
+		# 		WdSqr = 2 .*diagm(0 => vec(pMisArr[i].Wd[:,s])).*diagm(0 => vec(pMisArr[i].Wd[:,s]));
+		# 		Ap[i] = HinvPs[i]
+		# 		diags[i] =  WdSqr;
+		# 		B[i] =  HinvPs[i] * WdSqr * pMisArr[i].dobs[:,s,1] * Z2' - HinvPs[i] * WdSqr *(HinvPs[i]' * pMisArr[i].pFor.originalSources[:, s] * Z2') * RHSminv;
+		# 	end
+		#
+		# 	Z1 = KrylovMethods.cg((x-> real(sum(map((Ai, diag) ->  Ai * diag * (Ai' * x) + 2*beta.* x, Ap, diags)))), real(sum(B)), x=Z1, tol=1e-8, maxIter=100)[1];
+		#
+		# end
+		# e3 = time_ns();
+		# println("runtime of minimizeZs");
+		# println((e3 - t3)/1.0e9);
+		#
+		#
+		#
+		# #
+		# # runningProcs = map(x->x.where, pMisTemp);
+		# # pMisCurrent = map(fetch, pMisTemp);
+		# # pForpCurrent =  map(x->x.pFor, pMisCurrent);
+		# # eta = 20.0;
+		# # Dobs = map(x->x.dobs[:,:], pMisCurrent);
+		# # Wd = map(x->x.Wd[:,:], pMisCurrent);
+		# # DobsNew = copy(Dobs[:]);
+		# # nsrc = size(DobsNew[1],2);
+		# # TEmat = rand([-1,1],(nsrc,10));
+		# # WdEta = eta.*Wd;
+		# # DpNew, = getData(vec(mc),pForpCurrent);
+		# # DobsTemp = Array{Array}(undef, numOfCurrentProblems);
+		# # WdNew = Array{Array}(undef, numOfCurrentProblems);
+		# # for i=1:numOfCurrentProblems
+		# # 	DobsTemp[i] = fetch(DpNew[i]);
+		# # 	for s=1:nsrc
+		# # 		etaM1 = 2 .*diagm(0 => vec(Wd[1][:,1])).*diagm(0 => vec(Wd[1][:,1]));
+		# # 		println("SIZE OLD ETAM: ");
+		# # 		println(size(etaM1));
+		# # 		etaM = 2 * eta .*diagm(0 => vec(Wd[i][:,s])).*diagm(0 => vec(Wd[i][:,s]));
+		# # 		println("SIZE NEW ETAM: ");
+		# # 		println(size(etaM));
+		# # 		A = (2 .*I + etaM)
+		# # 		b = (etaM)*(A\Dobs[i][:,s])
+		# # 		DobsNew[i][:,s] = 2 .* (A\DobsTemp[i][:,s]) + b;
+		# # 	end
+		# # 	DobsNew[i] = DobsNew[i][:,:] * TEmat;
+		# # 	WdNew[i] = ones((size(DobsNew[i], 1), 10))./sqrt(10);
+		# # 	println("SIZE OLD WD: ");
+		# # 	println(size(WdNew[i]));
+		# # 	WdNew[i] = 1.0./(abs.(real.(DobsNew[i])) .+ 1e-1*mean(abs.(DobsNew[i])));
+		# # 	WdNew[i] = WdNew[i] ./ sqrt(10);
+		# # 	println("SIZE NEW WD: ");
+		# # 	println(size(WdNew[i]));
+		# # end
+		# #
+		# # pForCurrent = Array{RemoteChannel}(undef, numOfCurrentProblems);
+		# # for i=1:numOfCurrentProblems
+		# # 	pForTemp = pForpCurrent[i];
+		# # 	pForTemp.Sources = pForTemp.ExtendedSources * TEmat;
+		# # 	pForCurrent[i] = initRemoteChannel(x->x, runningProcs[i], pForTemp);
+		# # end
+		# #
+		# #
+		# # pMisTemp2 = getMisfitParam(pForCurrent, WdNew, DobsNew, SSDFun, Iact, mback);
+		# #
+		# # println("size of exsources:" , size(fetch(pMisTemp2[1]).pFor.Sources));
+		# #
+		# Dc,F,dF,d2F,pMisNone,times,indDebit = computeMisfit(mc, map(pm -> fetch(pm), pMisTemp));
+		#
+		# println("Misfit at GN ", j, "frequncy idx: ", freqIdx, " Is: ", F);
+		#
+		#
+		#
+		# pInv.mref = mc[:];
+		# t4 = time_ns();
+		# mc,Dc,flag,His = projGNCG(mc,pInv,pMisTemp,dumpResults = dumpGN);
+		# e4 = time_ns();
+		# println((t4 - e4)/1.0e9);
+		# Dc,F,dF,d2F,pMisNone,times,indDebit = computeMisfit(mc, map(pm -> fetch(pm), pMisTemp));
+		#
+		# println("Misfit after GN ", j, "frequncy idx: ", freqIdx, " Is: ", F);
+		#
+		# pMis[currentProblems] = pMisTemp;
+		# clear!(pMisTemp);
 	end
 	beta *= 10;
 

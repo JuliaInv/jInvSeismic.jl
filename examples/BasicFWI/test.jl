@@ -1,222 +1,147 @@
-# m=20;
-# p=4;
-# n=10;
-#
-# Z1 = 10 * rand(m,p);
-# Z2 = 10 * rand(p,n);
-#
-# Ztot = Z1 * Z2;
-#
-# # Z1 = ones(m,n);
-# a = zeros(m*n);
-# println(typeof(a));
-# println(a[1:3]);
-# g = zeros(m * p, m*p);
-# v = zeros(m *p, m*n);
-# for i=1:m
-# 	for j=1:p
-# 		# v = zeros(m * n);
-# 		startIdx = (i - 1) * n + 1;
-# 		endIdx = (i - 1) * n + n;
-# 		v[(i-1) * p + j, startIdx:endIdx] = Z2[j, :];
-#
-# 		startIdx = (i - 1) * p + 1;
-# 		endIdx = (i - 1) * p + p;
-# 		for k = 1:m
-# 			for l = 1:p
-# 				g[(i-1) * p + j, (k-1)*p + l] = (Z2[j,:])' * (Z2[l,:]);
-# 			end
-# 		end
-# 		# g[(i-1) * p + j ,startIdx:endIdx] = (Z2[j,:])' * Z2';
-# 	end
-# end
-#
-# lu(g);
-#
-# Zv = reshape(Ztot, (m*n, 1));
-# rhs = v * Zv;
-#
-# Z1rv = g\rhs;
 using KrylovMethods
+using JLD
+using jInv.LinearSolvers
+using Statistics
+m = 67;
+p = 10;
+n = 34;
 
+q = 58;
 
-function dZ1x(x,Z2, m, p)
-	println("start Wx");
-	Z1x = zeros(m* p);
-	for mj = 1:p
-		w = zeros(m*p);
+# Z1 = [2 1 ;1 2; 1 1; 3 4]
+# Z2 = [1 2 3; 1 1 1]
+Z1 = 10 * rand(ComplexF64,(m,p));
+Z2 = 10 *rand(ComplexF64,(p,n));
+println("=======1");
+Z = Z1*Z2;
+println("=======2");
+Zv = reshape(Z, (m*n, 1));
+# M = rand(q, m*n);
+println("=======3");
+M = rand(ComplexF64, (q, m*n));
+Z1 = 10 * rand(ComplexF64,(m,p));
+# println(Z1);
+Z2 = 10 * rand(ComplexF64,(p,n));
+println("=======4");
+M[1:q, 1:q] += I;
+M[1:q, 4:(3+q)] += I;
 
-		for j =1:p
-			w[m*(j-1) + 1] = (Z2[mj,:])' *  Z2[j,:] ;
+Q = M * Zv;
+
+alpha = 1e-7;
+
+function calculatedZ2x(x, Z1)
+	A = complex(zeros(p*n));
+	for i=1:p
+		v = complex(zeros(m*n));
+		for j =1:m
+			v[j] = Z1[j, i];
 		end
-		for i = 1:m
-			# println(w')
-			Z1x[((mj - 1) * m + i)] = dot(w, x);
-			a = copy(w);
-			circshift!(w, a, 1);
-			# println(a)
-			# w = a
-		end
-	end
-	println("end Wx");
-	return Z1x;
-end
 
-
-function calculateZ1(Z2, Z)
-	A = zeros(m*p);
-	Zv = reshape(Z, (m*n,1))
-
-	for mj = 1:p
-		v = zeros(m*n);
-		for j =1:n
-			v[m*(j-1) + 1] = Z2[mj, j];
-		end
-		for i = 1:m
-			A[((mj - 1) * m + i)] = dot(v, Zv);
+		for j=1:n
+			A[i + (j-1)*p] = dot(v, x);
 			a = copy(v);
-			circshift!(v, a, 1);
-			# println(a)
-			# w = a
+			circshift!(v, a, m);
 		end
 	end
 
-	res = KrylovMethods.cg((x)-> dZ1x(x, Z2, m ,p) , A, tol=1e-12, maxIter=100, out=2)[1];
-	res = reshape(res, (m, p));
-end
-
-# function calculateZ2(Z1, Z)
-# 	A = zeros(p * n);
-# 	Zv = reshape(Z, (m*n,1))
-#
-# 	for mj = 1:p
-# 		v = zeros(m*n);
-# 		for j =1:n
-# 			v[m*(j-1) + 1] = Z2[mj, j];
-# 		end
-# 		for i = 1:m
-# 			A[((mj - 1) * m + i)] = dot(v, Zv);
-# 			a = copy(v);
-# 			circshift!(v, a, 1);
-# 			# println(a)
-# 			# w = a
-# 		end
-# 	end
-#
-# 	res = KrylovMethods.cg((x)-> dZ1x(x, Z2, m ,p) , A, tol=1e-12, maxIter=100, out=2)[1];
-# 	res = reshape(res, (m, p));
-# end
-
-function dZ2x(x, Z1, p, n)
-	println("start Wx");
-	A = zeros(n*p, n*p);
-	Z2x = zeros(p * n);
-	for mj = 1:p
-		w = zeros(p * n);
-
-		for j = 1:p
-			w[j] = (Z1[:,mj])' *  Z1[:,j] ;
-		end
-
-		for i = 1:n
-			println(w')
-			A[:, p *(i - 1) + mj] = w'
-			Z2x[p *(i - 1) + mj] = dot(w,x);
-			a = copy(w);
-			circshift!(w, a, p);
-		end
-
-
-			# println(a)
-			# w = a
-
-	end
-	println("end Wx");
-	# return Z2x;
 	return A;
 end
 
-
-m = 3;
-p = 2;
-n = 3;
-
-Z1 = [2 1 ;1 2; 1 1]
-Z2 = [1 2 3; 1 1 1]
-
-# println("b4 rand");
-# Z1 = 10 * rand(m, p);
-# Z2 = 10 * rand(p , n);
-# println("after rand");
-Z = Z1 * Z2;
+function coeffsZ2(x, Z1, M, WdSqr)
+	Z = Z1 * reshape(x, (p,n));
+	Z = reshape(Z, (m*n, 1));
+	return calculatedZ2x((M' .* WdSqr') * (M * Z), Z1) + alpha * x;
+end
 
 
-W = zeros(m*p, m*p);
+function calculatedZ1(Z2)
+	A = complex(zeros(m*p, m*n));
 
-W[1, 1] = (Z1[:,1])' *  Z1[:,1] ;
-W[1, 2] = (Z1[:,1])' *  Z1[:,2] ;
+	for mj = 1:p
+		v = complex(zeros(m*n));
+		for j =1:n
+			v[m*(j-1) + 1] = Z2[mj, j];
+		end
 
-W[2, 1] = (Z1[:,2])' *  Z1[:,1] ;
-W[2, 2] = (Z1[:,2])' *  Z1[:,2] ;
+		for i = 1:m
+			A[((mj - 1) * m + i), :] = v;
+			a = copy(v);
+			circshift!(v, a, 1);
+		end
+	end
+	return A;
+end
 
-W[3, 3] = (Z1[:,1])' *  Z1[:,1] ;
-W[3, 4] = (Z1[:,1])' *  Z1[:,2] ;
+function calculatedZ1x(x, Z2)
+	A = complex(zeros(m*p));
 
-W[4, 3] = (Z1[:,2])' *  Z1[:,1] ;
-W[4, 4] = (Z1[:,2])' *  Z1[:,2] ;
+	for mj = 1:p
+		v = complex(zeros(m*n));
+		for j =1:n
+			v[m*(j-1) + 1] = Z2[mj, j];
+		end
 
-W[5, 5] = (Z1[:,1])' *  Z1[:,1] ;
-W[5, 6] = (Z1[:,1])' *  Z1[:,2] ;
+		for i = 1:m
+			A[((mj - 1) * m + i)] = dot(v, x);
+			a = copy(v);
+			circshift!(v, a, 1);
+		end
+	end
+	return A;
+end
 
-W[6, 5] = (Z1[:,2])' *  Z1[:,1] ;
-W[6, 6] = (Z1[:,2])' *  Z1[:,2] ;
+function coeffsZ1(x, Z2, M, WdSqr)
+	Z = reshape(x, (m,p)) * Z2;
+	Z = reshape(Z, (m*n, 1));
+	return calculatedZ1x((M' .* WdSqr') * (M * Z), Z2) + alpha * x;
+end
 
+function minimize(Dobs, PHinv, Z1 ,Z2, Wd)
+	WdSqr = 2 .* Wd .^ 2;
+	t = 1e-5;
+	misfitCalc() = norm(Wd.* Dobs - Wd.* PHinv * reshape(Z1 * Z2, (m*n , 1))) + alpha * norm(Z1) + alpha * norm(Z2);
+	misfitNorm = 10;
+	println("misfit at start: ", misfitCalc());
+	while misfitNorm > t
+		prevMisfit = misfitCalc();
+		rhs = calculatedZ1x((PHinv' .* WdSqr') * Dobs, Z2);
+		res = KrylovMethods.cg((x)-> complex(coeffsZ1(x, Z2, PHinv, WdSqr)) , Vector(complex(rhs[:])), tol=1e-8, maxIter=100,
+		x=complex(reshape(Z1, (m*p,1))[:]), out=2)[1];
+		Z1 = reshape(res, (m, p));
+		# misfit = norm(WdSqr.*Dobs - WdSqr.*PHinv * reshape(Z1 * Z2, (m*n , 1))) + alpha * norm(Z1) + alpha * norm(Z2);
 
-# v[1, 1] =(Z2[1,:])' *  Z2[1,:] ;
-# v[1, 4] =(Z2[1,:])' *  Z2[2,:] ;
+		println(misfitCalc());
+
+		rhs = calculatedZ2x((PHinv' .* WdSqr') * Dobs, Z1);
+		res = KrylovMethods.cg((x)-> complex(coeffsZ2(complex(x), Z1, PHinv, WdSqr)) , Vector(complex(rhs[:])), tol=1e-8,
+		maxIter=100, x=complex(reshape(Z2, (p*n,1))[:]), out=2)[1];
+		Z2 = reshape(res, (p, n));
+
+		# misfit = norm(WdSqr.*Dobs - WdSqr.*PHinv * reshape(Z1 * Z2, (m*n , 1))) + alpha * norm(Z1) + alpha * norm(Z2);
+
+		misfit = misfitCalc();
+		println(misfit);
+		misfitNorm = abs(prevMisfit - misfit);
+	end
+	return Z1, Z2;
+end
+
+PH = load("SavedVals.jld", "hinv")
+DOBS = load("SavedVals.jld", "dobs")
+WD = load("SavedVals.jld", "wd")
+SRC = load("SavedVals.jld", "q1")
+# PH = readdlm("PHINV_1", ',', ComplexF64)
+# DOBS = readdlm("DOBS_1")
+# WD = readdlm("WD_1")
+# SRC = readdlm("Q1_1")
+# * reshape(Z1 * Z2, (m*n , 1))
+misfitCalc() = norm(WD.*DOBS - WD.*PH * reshape(Z1 * Z2, (m*n , 1))) + alpha * norm(Z1) + alpha * norm(Z2);
+
+mis = misfitCalc();
 #
-# v[2, 2] =(Z2[1,:])' *  Z2[1,:] ;
-# v[2, 5] =(Z2[1,:])' *  Z2[2,:] ;
-#
-# v[3, 3] =(Z2[1,:])' *  Z2[1,:] ;
-# v[3, 6] =(Z2[1,:])' *  Z2[2,:] ;
-#
-# v[4, 1] =(Z2[2,:])' *  Z2[1,:] ;
-# v[4, 4] =(Z2[2,:])' *  Z2[2,:] ;
-#
-# v[5, 2] =(Z2[2,:])' *  Z2[1,:] ;
-# v[5, 5] =(Z2[2,:])' *  Z2[2,:] ;
-#
-# v[6, 3] =(Z2[2,:])' *  Z2[1,:] ;
-# v[6, 6] =(Z2[2,:])' *  Z2[2,:] ;
-
-# v = [1 0 0 2 0 0 3 0 0;
-# 	0 1 0 0 2 0 0 3 0;
-# 	0 0 1 0 0 2 0 0 3;
-# 	1 0 0 1 0 0 1 0 0;
-# 	0 1 0 0 1 0 0 1 0;
-# 	0 0 1 0 0 1 0 0 1];
-
-v = [2 1 1 0 0 0 0 0 0;
-	1 2 1 0 0 0 0 0 0;
-	0 0 0 2 1 1 0 0 0 ;
-	0 0 0 1 2 1 0 0 0;
-	0 0 0 0 0 0 2 1 1;
-	0 0 0 0 0 0 1 2 1];
-
-# #
-# #
-Zv = reshape(Z, (m*n,1))
-A = v* Zv;
-
-res = calculateZ1(Z2, Z);
-
-
-C = dZ2x([1 1 1 1 1 1], Z1, p, n);
-# println("starting cg");
-# res = KrylovMethods.cg((x)-> Wx(x, Z1, Z2, m ,p) , A, tol=1e-12, maxIter=100, out=2)[1];
-
-
-# res = reshape(res, (m, p));
-res = reshape(W\A, (p, n));
-# println(norm(res.-Z2))
+# Wd = ones(size(Q))./(mean(abs.(Q)));
+# WdSqr = Wd.^2;
+WdSqr = WD.^2;
+a1, a2 = minimize(Q,M, Z1, Z2, WdSqr);
+# println(norm(WdSqr.*Q - WdSqr .* M * reshape(a1 * a2, (m*n , 1))) + alpha * norm(a1) + alpha * norm(a2))
