@@ -88,7 +88,6 @@ function minimize(b, PHinv, Z1 ,Z2, Wd)
 		Z1 = reshape(res, (m, p));
 
 		println("Misfit after Z1 calc: ", misfitCalc());
-		return Z1,Z2;
 		#rhs is Wd^2 * ∂Z/∂Z2 * P' * H^-1 * b where Z = Z1*Z2
 		rhs = calculatedZ2x((PHinv' .* WdSqr') * b, Z1);
 
