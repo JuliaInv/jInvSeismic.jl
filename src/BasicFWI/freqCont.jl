@@ -230,7 +230,7 @@ for freqIdx = startFrom:nfreq
 		println("Misfit after GN ", j, "frequncy idx: ", freqIdx, " Is: ", F);
 		pMispCurrent = Array{RemoteChannel}(undef, numOfCurrentProblems);
 		for i=1:numOfCurrentProblems
-			pMispCurrent[i] = initRemoteChannel(x->x, runningProcs[i], pMisCurrent);
+			pMispCurrent[i] = initRemoteChannel(x->x, runningProcs[i], pMisCurrent[i]);
 		end
 		pInv.mref = mc[:];
 		t4 = time_ns();
