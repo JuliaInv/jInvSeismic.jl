@@ -83,7 +83,7 @@ function minimize(b, PHinv, Z1 ,Z2, Wd)
 
 		#calculate x such that Ax = rhs, coeffsZ1 calculates Ay for a vector y
 		res = KrylovMethods.cg((x)-> coeffsZ1(x, Z2, PHinv, WdSqr) , Vector(rhs[:]), tol=1e-8, maxIter=100,
-		x=complex(reshape(Z1, (m*p,1))[:]), out=2)[1];
+			x=complex(reshape(Z1, (m*p,1))[:]), out=2)[1];
 
 		Z1 = reshape(res, (m, p));
 
@@ -93,7 +93,7 @@ function minimize(b, PHinv, Z1 ,Z2, Wd)
 
 		#calculate x such that Ax = rhs, coeffsZ2 calculates Ay for a vector y
 		res = KrylovMethods.cg((x)-> coeffsZ2(x, Z1, PHinv, WdSqr) , Vector(rhs[:]), tol=1e-8,
-		maxIter=100, x=complex(reshape(Z2, (p*n,1))[:]), out=2)[1];
+			maxIter=100, x=complex(reshape(Z2, (p*n,1))[:]), out=2)[1];
 		Z2 = reshape(res, (p, n));
 
 		misfit = misfitCalc();
