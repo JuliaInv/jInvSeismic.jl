@@ -1,10 +1,10 @@
 
-export getSSORCGFourthOrderRegularizationPreconditioner,SSORCGParamFourthOrder, applySSORCGFourth, setupDoNothing, wFourthOrderSmoothing
+export getSSORCGFourthOrderRegularizationPreconditioner,SSORCGParamFourthOrder, applySSORCGFourth, setupDoNothing, wFourthOrderSmoothingNodal
 
 
-function wFourthOrderSmoothing(m::Vector, mref::Vector, M::AbstractMesh; Iact=1.0, C=[])	
+function wFourthOrderSmoothingNodal(m::Vector, mref::Vector, M::AbstractMesh; Iact=1.0, C=[])	
 	dm = m.-mref;
-	d2R = wdiffusionReg(m,mref,M,Iact = Iact,C = C)[3];
+	d2R = wdiffusionRegNodal(m,mref,M,Iact = Iact,C = C)[3];
 	clear!(M);
 	d2R = d2R'*d2R;
 	dR  = d2R*dm;
@@ -34,7 +34,7 @@ end
 
 
 function applySAAMGFourth(Hs::Function, d2R::SparseMatrixCSC,v::Vector,param)
-	d2R = wdiffusionReg(v,v,param.M,Iact = param.Iact, C = param.C)[3]
+	d2R = wdiffusionRegNodal(v,v,param.M,Iact = param.Iact, C = param.C)[3]
 	MG = getMGparam(5,8,500,1e-8,"SPAI",1.0,1,1,'V',"MUMPS");
 	SA_AMGsetup(d2R,MG,eltype(v),true,1,false);
 	x = zeros(eltype(v),size(v));
@@ -46,7 +46,7 @@ function applySAAMGFourth(Hs::Function, d2R::SparseMatrixCSC,v::Vector,param)
 end
 
 function applySSORCGFourth(Hs::Function, d2R::SparseMatrixCSC,v::Vector,param)
-	d2R = wdiffusionReg(v,v,param.M,Iact = param.Iact, C = param.C)[3]
+	d2R = wdiffusionRegNodal(v,v,param.M,Iact = param.Iact, C = param.C)[3]
 	Dinv = param.omega./diag(d2R);
 	aux   = zeros(size(d2R,2));
 	SSOR(r) = (aux[:]=0.0; ssorPrecTrans!(d2R,aux,r,Dinv); return aux);

@@ -17,11 +17,6 @@ function getData(m,pFor::FWIparam,doClear::Bool=false)
     nsrc  		= size(Q,2)
 	
 	
-	An2cc = getNodalAverageMatrix(M);
-   
-    m = An2cc'*m;
-	gamma = An2cc'*gamma;
-	
 	# allocate space for data and fields
 	n = prod(M.n.+1);
 	# ALL AT ONCE DIRECT CODE

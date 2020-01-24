@@ -162,7 +162,7 @@ Omega = Msh.domain;
 
 if length(size(m))==2
 	mnew = addAbsorbingLayer2D(m,pad);
-	MshNew = getRegularMesh([Omega[1],Omega[2] + 2*pad*Msh.h[1],Omega[3],Omega[4]+pad*Msh.h[2]],collect(size(mnew)));
+	MshNew = getRegularMesh([Omega[1],Omega[2] + 2*pad*Msh.h[1],Omega[3],Omega[4]+pad*Msh.h[2]],Msh.n.+[2*pad,pad]);
 elseif length(size(m))==3
 	mnew = zeros(size(m,1)+2*pad,size(m,2)+2*pad,size(m,3)+pad);
 	mnew[pad+1:end-pad,pad+1:end-pad,1:end-pad] = m;
@@ -180,7 +180,7 @@ elseif length(size(m))==3
 	for k=1:pad
 		mnew[:,:,end-pad+k] = t;
 	end
-	MshNew = getRegularMesh([Omega[1],Omega[2] + 2*pad*Msh.h[1],Omega[3],Omega[4] + 2*pad*Msh.h[2],Omega[5],Omega[6]+pad*Msh.h[2]],collect(size(mnew))-1);
+	MshNew = getRegularMesh([Omega[1],Omega[2] + 2*pad*Msh.h[1],Omega[3],Omega[4] + 2*pad*Msh.h[2],Omega[5],Omega[6]+pad*Msh.h[2]],Msh.n.+[2*pad,2*pad,pad]);
 end
 
 return mnew,MshNew;

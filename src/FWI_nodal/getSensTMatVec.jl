@@ -1,19 +1,19 @@
-export getSensMatVec
+export getSensTMatVec
 
-function getSensMatVec(v::Vector,m::Vector,pFor::FWIparam)
+function getSensTMatVec(v::Vector,m::Vector,pFor::FWIparam)
 
     # extract pointers
-    M    			= pFor.Mesh
+    M  				= pFor.Mesh
     omega 			= pFor.omega
     gamma 			= pFor.gamma
     Q     			= pFor.Sources
     P     			= pFor.Receivers
-    Ainv   			= pFor.ForwardSolver
-    nsrc 			= size(Q,2)
-    nrec 			= size(P,2)
+    Ainv			= pFor.ForwardSolver
+	
 	batchSize 		= pFor.forwardSolveBatchSize;
 	select  		= pFor.sourceSelection;
 	
+	nsrc = size(Q,2); nrec = size(P,2);
 	
 	if length(select) > 0
 		nsrc = length(select);
@@ -24,13 +24,10 @@ function getSensMatVec(v::Vector,m::Vector,pFor::FWIparam)
 	end
 	
 	numBatches 	= ceil(Int64,nsrc/batchSize);
+	n = prod(M.n.+1);
 	
-	# derivative of mass matrix
-	An2cc = getNodalAverageMatrix(M);
-	m = An2cc'*m;
-	gamma = An2cc'*gamma;
-	## ALL AT ONCE CODE
-	H = spzeros(ComplexF64,prod(M.n.+1),prod(M.n.+1));
+	
+	H = spzeros(ComplexF64,n,n);
 	if isa(Ainv,ShiftedLaplacianMultigridSolver)
 		H = GetHelmholtzOperator(M,m,omega, gamma, true,useSommerfeldBC);
 		Ainv.helmParam = HelmholtzParam(M,gamma,m,omega,true,useSommerfeldBC);
@@ -41,11 +38,13 @@ function getSensMatVec(v::Vector,m::Vector,pFor::FWIparam)
 		H = GetHelmholtzOperator(M,m,omega, gamma, true,useSommerfeldBC);
 	end
 	
-	Jv = zeros(ComplexF64,nrec,nsrc);
-	t = An2cc'*((1.0.-1im*vec(gamma./omega)).*v);
-	# t = ((1.0.+1im*vec(gamma)).*v);
+	JTv = zeros(Float64,n)
+	Vdatashape = reshape(v,nrec,nsrc);
+	
 	for k_batch = 1:numBatches
 		batchIdxs = (k_batch-1)*batchSize + 1 : min(k_batch*batchSize,nsrc);
+		V = P*Vdatashape[:,batchIdxs];
+		V,Ainv = solveLinearSystem(H,V,Ainv,1);
 		if pFor.useFilesForFields
 			filename = getFieldsFileName(omega);
 			file     = matopen(filename);
@@ -53,19 +52,25 @@ function getSensMatVec(v::Vector,m::Vector,pFor::FWIparam)
 			close(file);
 		else
 			U = pFor.Fields[:,batchIdxs];
-		end
-		U = t.*U;
-		U,Ainv = solveLinearSystem(H,U,Ainv,0);
-		Jv[:,batchIdxs] = omega^2*(P'*U);
+		end 
+		# V = conj((1.0.+1im*vec(gamma)).*U).*V; 
+		V = conj((1.0.-1im*vec(gamma./omega)).*U).*V;
+		
+		JTv .+= omega^2*vec(real(sum(V,dims=2)));
 	end
 	
-	# if isa(Ainv,ShiftedLaplacianMultigridSolver) 
-		# Experimental: J does not necessarily needs to clear the setup.
-		# clear!(Ainv.MG);
-	# end
+	if isa(Ainv,ShiftedLaplacianMultigridSolver)
+		# println("Clearing!!!");
+		clear!(Ainv.MG);
+	end
 	
+	# V = P*Vdatashape;
+	# V,Ainv = solveLinearSystem(H,V,Ainv,1)   # Lam = ForwardSolver\(P*V);
+		
+	# # JTv    = conj((1-1im*vec(gamma./omega)).*U).*V; 
+	# # V      = 0;
+	# # JTv	 = omega^2*vec(sum(real(JTv),2));
 
-    return vec(Jv)
+    return JTv
 end
-
 

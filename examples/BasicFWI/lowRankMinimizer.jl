@@ -7,16 +7,15 @@ p = 10;
 n = 34;
 
 q = 58;
-
 nsrc = 15
+
 
 Z1 = 10 * rand(ComplexF64,(m*n,p)); #Initial guess
 Z2 = 10 * rand(ComplexF64,(p,nsrc)); #Initial guess
-
 p = 10
 
 
-alpha = 1e-2;
+alpha = 1e+2;
 
 PH = load("SavedVals2.jld", "hinvp")
 DOBS = load("SavedVals2.jld", "dobs")[:,:,1]
@@ -37,6 +36,7 @@ println("misfit at start:: ", misfitCalc())
 rhs= (mean(WD)^2) .* Z1' * PH * (-PH' * SRC + DOBS);
 lhs = zeros(ComplexF64, (p,p));
 lhs += (mean(WD)^2) .* Z1' * PH * PH' * Z1;
+println(opnorm(lhs,1))
 
 
 lhs += alpha * I;
@@ -67,6 +67,7 @@ rhs = zeros(ComplexF64, (m*n, p));
 rhs += (mean(WD)^2).*multOPT(-PH' * SRC + DOBS, PH);
 
 
-Z1 = KrylovMethods.blockBiCGSTB(x-> multAll(x), rhs)[1];
+# Z1 = KrylovMethods.blockBiCGSTB(x-> multAll(x), rhs)[1];
+Z1 = KrylovMethods.blockFGMRES(x-> multAll(x), rhs,10)[1];
 
 println("misfit at Z1:: ", misfitCalc())

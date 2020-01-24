@@ -27,14 +27,14 @@ if newSize!=[]
 	mref = expandModelNearest(mref,collect(size(mref)),newSize);
 end
 
-Minv = getRegularMesh(domain,collect(size(m)));
+Minv = getRegularMesh(domain,collect(size(m)).-1);
 
 
 (mPadded,MinvPadded) = addAbsorbingLayer(m,Minv,pad);
 (mrefPadded,MinvPadded) = addAbsorbingLayer(mref,Minv,pad);
 
 
-N = prod(MinvPadded.n);
+N = prod(MinvPadded.n.+1);
 boundsLow  = minimum(mPadded);
 boundsHigh = maximum(mPadded);
 
