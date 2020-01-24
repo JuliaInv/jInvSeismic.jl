@@ -8,9 +8,11 @@ n = 34;
 
 q = 58;
 
+nsrc = 15
+
 Z1 = 10 * rand(ComplexF64,(m*n,p)); #Initial guess
 Z2 = 10 * rand(ComplexF64,(p,nsrc)); #Initial guess
-nsrc = 15
+
 p = 10
 
 

@@ -139,9 +139,6 @@ for freqIdx = startFrom:nfreq
 		t1 = time_ns();
 		for freqs = 1:numOfCurrentProblems
 			HinvPs[freqs] = (pForCurrent[freqs].Ainv[1])' \ Matrix(pForCurrent[freqs].Receivers);
-			# save("SavedVals2.jld", "hinv", HinvPs[freqs]', "dobs", pMisCurrent[freqs].dobs[:,1]
-			# , "wd",  pMisCurrent[freqs].Wd[:,1], "q1", pForCurrent[freqs].Sources[:,1])
-			# throw(Exception())
 			println("HINVP done");
 		end
 		e1 = time_ns();
