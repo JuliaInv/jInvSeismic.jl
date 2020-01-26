@@ -26,24 +26,22 @@ function getSensMatVec(v::Vector,m::Vector,pFor::FWIparam)
 	numBatches 	= ceil(Int64,nsrc/batchSize);
 	
 	# derivative of mass matrix
-	An2cc = getNodalAverageMatrix(M);
-	m = An2cc'*m;
-	gamma = An2cc'*gamma;
+	An2cc = getNodalAverageMatrix(M);	
 	## ALL AT ONCE CODE
 	H = spzeros(ComplexF64,prod(M.n.+1),prod(M.n.+1));
+	gamma_t = An2cc'*gamma;
+	m_t = An2cc'*m;
 	if isa(Ainv,ShiftedLaplacianMultigridSolver)
-		H = GetHelmholtzOperator(M,m,omega, gamma, true,useSommerfeldBC);
-		Ainv.helmParam = HelmholtzParam(M,gamma,m,omega,true,useSommerfeldBC);
-		H = H + GetHelmholtzShiftOP(m, omega,Ainv.shift[1]); 
+		H = GetHelmholtzOperator(M,m_t,omega, gamma_t, true,useSommerfeldBC);
+		Ainv.helmParam = HelmholtzParam(M,gamma_t,m_t,omega,true,useSommerfeldBC);
+		H = H + GetHelmholtzShiftOP(m_t, omega,Ainv.shift[1]); 
 		H = sparse(H');
 		# H is actually shifted laplacian now...
 	elseif isa(Ainv,JuliaSolver)
-		H = GetHelmholtzOperator(M,m,omega, gamma, true,useSommerfeldBC);
-	end
-	
+		H = GetHelmholtzOperator(M,m_t,omega, gamma_t, true,useSommerfeldBC);
+	end	
 	Jv = zeros(ComplexF64,nrec,nsrc);
-	t = An2cc'*((1.0.-1im*vec(gamma./omega)).*v);
-	# t = ((1.0.+1im*vec(gamma)).*v);
+	t = ((1.0.-1im*vec(gamma_t./omega)).*(An2cc'*v));
 	for k_batch = 1:numBatches
 		batchIdxs = (k_batch-1)*batchSize + 1 : min(k_batch*batchSize,nsrc);
 		if pFor.useFilesForFields

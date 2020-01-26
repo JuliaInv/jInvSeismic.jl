@@ -18,12 +18,11 @@ function getData(m,pFor::FWIparam,doClear::Bool=false)
 	
 	
 	An2cc = getNodalAverageMatrix(M);
-   
     m = An2cc'*m;
 	gamma = An2cc'*gamma;
 	
 	# allocate space for data and fields
-	n = prod(M.n.+1);
+	n_nodes = prod(M.n.+1);
 	# ALL AT ONCE DIRECT CODE
 	H = GetHelmholtzOperator(M,m,omega, gamma, true,useSommerfeldBC);
 	
@@ -56,13 +55,13 @@ function getData(m,pFor::FWIparam,doClear::Bool=false)
 			tfilename = getFieldsFileName(omega);
 			tfile     = matopen(tfilename, "w");
 		else
-			Fields    = zeros(FieldsType,n   ,nsrc);
+			Fields    = zeros(FieldsType,n_nodes   ,nsrc);
 		end
 	end
 	
 	numBatches 	= ceil(Int64,nsrc/batchSize);
-	D 			= zeros(ComplexF64,nrec,nsrc);
-	U 			= zeros(ComplexF64,n,batchSize);
+	D 			= zeros(FieldsType,nrec,nsrc);
+	U 			= zeros(FieldsType,n_nodes,batchSize);
 	
 	Ainv.doClear = 1;
 	for k_batch = 1:numBatches
@@ -70,7 +69,7 @@ function getData(m,pFor::FWIparam,doClear::Bool=false)
 		if length(length(batchIdxs))==batchSize
 			U[:] = Matrix(Qs[:,batchIdxs]);
 		else
-			U = convert(Array{ComplexF64},Matrix(Qs[:,batchIdxs]));
+			U = convert(Array{FieldsType},Matrix(Qs[:,batchIdxs]));
 		end
 		U,Ainv = solveLinearSystem(H,U,Ainv,0)
 		

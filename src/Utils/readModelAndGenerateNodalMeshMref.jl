@@ -1,8 +1,8 @@
 
-export readModelAndGenerateMeshMref
+export readModelAndGenerateNodalMeshMref
 # 1.75 and 2.9 are the velocities that are suitable for the SEG salt model
 
-function readModelAndGenerateMeshMref(readModelFolder::String,modelFilename::String,dim::Int64,pad::Int64,domain::Vector{Float64},newSize::Vector=[],velBottom::Float64=1.75,velHigh::Float64=2.9)
+function readModelAndGenerateNodalMeshMref(readModelFolder::String,modelFilename::String,dim::Int64,pad::Int64,domain::Vector{Float64},newSize::Vector=[],velBottom::Float64=1.75,velHigh::Float64=2.9)
 ########################## m,mref are in Velocity here. ###################################
 
 if dim==2

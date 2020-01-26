@@ -24,15 +24,14 @@ function getSensTMatVec(v::Vector,m::Vector,pFor::FWIparam)
 	end
 	
 	numBatches 	= ceil(Int64,nsrc/batchSize);
-	An2cc = getNodalAverageMatrix(Mesh)
+	An2cc = getNodalAverageMatrix(M);
 	m_nodal = An2cc'*m;
 	gamma_nodal = An2cc'*gamma;
-	
 	n_nodal = prod(M.n.+1);
 	H = spzeros(ComplexF64,n_nodal,n_nodal);
 	if isa(Ainv,ShiftedLaplacianMultigridSolver)
 		H = GetHelmholtzOperator(M,m_nodal,omega, gamma_nodal, true,useSommerfeldBC);
-		Ainv.helmParam = HelmholtzParam(M,gamma_nodal,m,omega,true,useSommerfeldBC);
+		Ainv.helmParam = HelmholtzParam(M,gamma_nodal,m_nodal,omega,true,useSommerfeldBC);
 		H = H + GetHelmholtzShiftOP(m_nodal, omega,Ainv.shift[1]); 
 		H = sparse(H');
 		# H is actually shifted laplacian now...
@@ -55,9 +54,8 @@ function getSensTMatVec(v::Vector,m::Vector,pFor::FWIparam)
 		else
 			U = pFor.Fields[:,batchIdxs];
 		end 
-		# V = conj((1.0.+1im*vec(gamma)).*U).*V; 
 		# Original code:  V = conj((1.0.-1im*vec(gamma./omega)).*U).*V;
-		V = conj((1.0.+1im*vec(gamma./omega))).*(An2cc*(conj(U).*V)); 
+		V = An2cc*(conj(U).*(1.0.+1im*vec(gamma_nodal./omega)).*V); 
 		JTv .+= omega^2*vec(real(sum(V,dims=2)));
 	end
 	
@@ -68,7 +66,6 @@ function getSensTMatVec(v::Vector,m::Vector,pFor::FWIparam)
 	
 	# V = P*Vdatashape;
 	# V,Ainv = solveLinearSystem(H,V,Ainv,1)   # Lam = ForwardSolver\(P*V);
-		
 	# # JTv    = conj((1-1im*vec(gamma./omega)).*U).*V; 
 	# # V      = 0;
 	# # JTv	 = omega^2*vec(sum(real(JTv),2));

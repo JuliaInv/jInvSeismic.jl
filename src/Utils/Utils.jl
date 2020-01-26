@@ -12,5 +12,6 @@ include("modelUtils.jl");
 include("SrcRcvUtils.jl");
 include("BoundModel.jl");
 include("readModelAndGenerateMeshMref.jl");
+include("readModelAndGenerateNodalMeshMref.jl");
 
 end

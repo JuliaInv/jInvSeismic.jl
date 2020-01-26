@@ -1,8 +1,4 @@
-
-
-
-
-
+println("********** FWI::testGetData ****************")
 # get a small mesh
 domain = [0 2.0 0 2.2]
 n      = [12;8;]
@@ -20,7 +16,11 @@ R      = copy(Q)
 
 # get param without parallelizaion
 ABLpad = 2;
+# This is to get the gamma to be cell centered.
+M.n.-=1; 
 gamma = Helmholtz.getABL(M,true,ones(Int64,M.dim)*ABLpad,8*pi);
+M.n.+=1;
+
 attenuation = 0.01*4*pi;
 gamma .+= attenuation; # adding Attenuation.
 gamma = gamma[:];
@@ -28,7 +28,7 @@ Ainv = getJuliaSolver();
 
 pFor = FWI.getFWIparam(omega, one(ComplexF64),gamma,Q,R,M,Ainv,[workers()[1]])[1];
 
-m0   = rand(Float64,tuple(n.+1...)).+1.0
+m0   = rand(Float64,tuple(n...)).+1.0
 dobs, = getData(vec(m0),fetch(pFor[1]));
 
 

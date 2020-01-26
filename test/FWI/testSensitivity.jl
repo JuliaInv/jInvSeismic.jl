@@ -1,4 +1,4 @@
-
+println("********** FWI::testSensitivity ****************")
 import FactoredEikonalFastMarching.getAnalyticalConstGradInv2D
 function checkDerivativeFWI(f::Function,x0,param,Iact;out::Bool=true,tol::Number=1.9,nSuccess::Int=3)
 	if out
@@ -16,7 +16,7 @@ function checkDerivativeFWI(f::Function,x0,param,Iact;out::Bool=true,tol::Number
 	Error = zeros(10,2)
 	Order = zeros(10,2)
 	Success = zeros(10)
-	for j=1:4
+	for j=1:6
 		ft = f(x0.+(10.0^(-j))*v,zeros(size(x0)),param)[1]            # function value
 		Error[j,1] = norm(f0.-ft)/norm(f0)           # Error TaylorPoly 0
 		Error[j,2] = norm(f0 .+(10.0^(-j))*dvf .- ft)/norm(f0) # Error TaylorPoly 1
@@ -35,16 +35,11 @@ end
 
 
 println("########### 2D TEST SETTING ##############################");
-n = [65,129]
 Omega = [0.0,4.0,0.0,8.0];
-Minv = getRegularMesh(Omega,n.-1);
+Minv = getRegularMesh(Omega,[64,128]);
 println(Minv.n)
-m = getAnalyticalConstGradInv2D(Minv.n.+1,Minv.h)[1];
-n = [65,129]
-Omega = [0.0,8.0,0.0,4.0];
-Minv = getRegularMesh(Omega,n.-1);
+m = getAnalyticalConstGradInv2D(Minv.n,Minv.h)[1];
 m = m';
-
 
 pad = 16;
 jump = 15;
@@ -56,7 +51,6 @@ omega = [0.5./maximum(Minv.h)];
 WaveletCoef = rand(ComplexF64,size(omega));
 println(omega)
 
-
 RCVfile = string("rcvMap.dat");
 SRCfile = string("srcMap.dat");
 writeSrcRcvLocFile(SRCfile,Minv,pad,jump);
@@ -67,31 +61,33 @@ Q = generateSrcRcvProjOperators(Minv.n.+1,srcNodeMap);
 P = generateSrcRcvProjOperators(Minv.n.+1,rcvNodeMap);
 
 ABLPad = pad.+5;
-gamma = getABL(Minv,true,ones(Int64,Minv.dim)*ABLPad,omega[1]);
+
+Minv.n.-=1; 
+gamma = Helmholtz.getABL(Minv,true,ones(Int64,Minv.dim)*ABLPad,omega[1]);
+Minv.n.+=1;
+
 attenuation = 0.01*omega[1];
 gamma .+= attenuation; # adding Attenuation.
 
 # Ainv = getMUMPSsolver([],0,0,0);
-# Ainv = getJuliaSolver();
+Ainv = getJuliaSolver();
 
 ###################################################################################################
-levels      = 2;
-numCores 	= 4;
-BLAS.set_num_threads(numCores);
-maxIter     = 50;
-relativeTol = 1e-5;
-relaxType   = "SPAI";
-relaxParam  = 1.0;
-relaxPre 	= 2;
-relaxPost   = 2;
-cycleType   ='W';
-coarseSolveType = "NoMUMPS";
-MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.0,0.0);
-shift = 0.15;
-Hparam = HelmholtzParam(Minv,zeros(0),zeros(0),0.0,true,true);
-Ainv = getShiftedLaplacianMultigridSolver(Hparam, MG,shift);
-
-
+# levels      = 2;
+# numCores 	= 4;
+# BLAS.set_num_threads(numCores);
+# maxIter     = 50;
+# relativeTol = 1e-5;
+# relaxType   = "SPAI";
+# relaxParam  = 1.0;
+# relaxPre 	= 2;
+# relaxPost   = 2;
+# cycleType   ='W';
+# coarseSolveType = "NoMUMPS";
+# MG = getMGparam(levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.0,0.0);
+# shift = 0.15;
+# Hparam = HelmholtzParam(Minv,zeros(0),zeros(0),0.0,true,true);
+# Ainv = getShiftedLaplacianMultigridSolver(Hparam, MG,shift);
 ###################################################################################################
 
 
@@ -102,7 +98,7 @@ println("Number of Sources: ",size(Q,2));
 
 # setup active cells - this is important so that Sommerfeld BC will not interfere with the sensitivities.
 
-N = prod(Minv.n.+1);
+N = prod(Minv.n);
 Iact = sparse(1.0I, N, N);
 mask = zeros(N);
 mask[gamma[:] .>= 0.2*maximum(gamma)] .= 1.0;
@@ -130,8 +126,10 @@ JtZ = getSensTMatVec(Z,m[:],pf);
 println(dot(Jv[:],Z[:]))
 println(dot(JtZ[:],v))
 
-if real(dot(JtZ[:],v) - dot(Jv[:],Z[:])) > 1e-5
-	warn("Checking that (J^T)^T = J for FWI falied: ",real(dot(JtZ[:],v) - dot(Jv[:],Z[:])) );
+
+@test real(dot(JtZ[:],v) - dot(Jv[:],Z[:])) < 1e-5
+if real(dot(JtZ[:],v) - dot(Jv[:],Z[:])) >= 1e-5
+	println("Checking that (J^T)^T = J for FWI falied: ",real(dot(JtZ[:],v) - dot(Jv[:],Z[:])) );
 end
 
 ############################## STOCHASTIC #####################################################

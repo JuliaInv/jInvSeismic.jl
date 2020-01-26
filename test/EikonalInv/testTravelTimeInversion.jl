@@ -25,7 +25,7 @@ dim     = 2;
 pad     = 1;
 jump    = 32;
 offset  = 256;
-(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],[64,32]);
+(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateNodalMeshMref(modelDir,"SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],[64,32]);
 dataFilenamePrefix = string(dataDir,"/DATA_SEG",tuple((Minv.n.+1)...));
 
 

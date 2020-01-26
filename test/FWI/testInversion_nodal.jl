@@ -25,7 +25,7 @@ resultsDir = pwd();
 dim     = 2;
 pad     = 10;
 jumpSrc = 15;
-newSize = [128,64];
+newSize = [129,65];
 offset  = ceil(Int64,(newSize[1]*(13.5/13.5)));
 println("Offset is: ",offset)
 (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.7);
@@ -71,7 +71,7 @@ prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,on
 # Setting up the inversion for slowness
 ########################################################################################################
 function dump(mc,Dc,iter,pInv,PMis,resultsFilename)
-	fullMc = slowSquaredToVelocity(reshape(Iact*pInv.modelfun(mc)[1] .+ sback,tuple((pInv.MInv.n)...)))[1];
+	fullMc = slowSquaredToVelocity(reshape(Iact*pInv.modelfun(mc)[1] .+ sback,tuple((pInv.MInv.n.+1)...)))[1];
 	# Temp = splitext(resultsFilename);
 	# if iter>0
 		# Temp = string(Temp[1],iter,Temp[2]);
@@ -101,7 +101,7 @@ modfun1		= slowToSlowSquared;
 maxStep=0.05*maximum(boundsHigh);
 
 regparams = [1.0,1.0,1.0,1e-4];
-regfun(m,mref,M) = wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
+regfun(m,mref,M) = wdiffusionRegNodal(m,mref,M,Iact=Iact,C=regparams);
 cgit = 2; 
 alpha = 1e-10;
 pcgTol = 1e-1;

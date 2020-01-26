@@ -22,7 +22,7 @@ import jInv.LinearSolvers.copySolver
 	
 import jInv.ForwardShare.ForwardProbType
 
-FieldsType = ComplexF16
+FieldsType = ComplexF64
 
 useSommerfeldBC = true;
 

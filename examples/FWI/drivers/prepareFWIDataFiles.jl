@@ -107,7 +107,9 @@ println("We have ",size(Q,2)," sources");
 # compute observed data
 
 ABLamp = getMaximalFrequency(1.0./(minimum(m).^2),Minv);
+Minv.n.-=1;
 gamma = getABL(Minv,true,ones(Int64,Minv.dim)*ABLpad,ABLamp);
+Minv.n.+=1;
 attenuation = 0.01*4*pi;
 gamma .+= attenuation; # adding Attenuation.
 
@@ -167,7 +169,9 @@ nrcv = size(P,2);
 
 
 ABLamp = getMaximalFrequency(1.0./(minimum(m).^2),Minv);
+Minv.n.-=1;
 gamma = getABL(Minv,true,ones(Int64,Minv.dim)*ABLpad,ABLamp);
+Minv.n.+=1;
 attenuation = 0.01*4*pi;;
 gamma .+= attenuation; # adding Attenuation.
 

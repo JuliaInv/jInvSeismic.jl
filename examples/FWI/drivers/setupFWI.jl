@@ -43,7 +43,7 @@ P = generateSrcRcvProjOperators(Minv.n.+1,rcvNodeMap);
 ##### Set up remote workers ############################################################################
 ########################################################################################################
 
-N = prod(Minv.n.+1);
+N = prod(Minv.n);
 
 Iact = SparseMatrixCSC(1.0I, N, N);
 mback   = zeros(Float64,N);
