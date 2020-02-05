@@ -83,8 +83,9 @@ end
 include("getData.jl")
 include("getSensMatVec.jl")
 include("getSensTMatVec.jl")
-include("getHelmholtzOperator.jl")
 include("getMassMatrix.jl")
+
+include("getHelmholtzOperator.jl")
 include("freqCont.jl")
 include("solvers.jl")
 

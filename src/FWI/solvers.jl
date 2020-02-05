@@ -3,6 +3,7 @@ using jInv.LinearSolvers
 using Statistics
 using jInv.Utils
 using Distributed
+using DelimitedFiles
 
 
 function calculateDobs(m::Array{Float64, 2}, pForp::Array{RemoteChannel},
@@ -40,7 +41,7 @@ function solveForwardProblemExtendedSources(m::Array{Float64, 2}, pForp::Array{R
 	Dobs = calculateDobs(m, pForp, omega, nfreq)
 	Wd = Array{Array}(undef, length(Dobs));
 
-	avgDobs = mean(abs.(map(dobs_j -> mean(abs.(dobs_j)), Dobs[:])));
+	avgDobs = mean(map(dobs_j -> mean(dobs_j), Dobs[:]));
 	for k=1:length(Dobs)
 		Wd[k] = ones(size(Dobs[k])) ./ avgDobs ;
 	end
@@ -49,7 +50,7 @@ function solveForwardProblemExtendedSources(m::Array{Float64, 2}, pForp::Array{R
 end
 
 export solveForwardProblemNoProcs
-function solveForwardProblemNoProcs(m::Array{Float64, 2}, pFor::BasicFWIparam,
+function solveForwardProblemNoProcs(m::Array{Float64, 2}, pFor::FWIparam,
 	omega::Vector, nfreq::Int64)
 	Dp,pFor = getData(vec(m),pFor)
 	nfreq = length(omega);
@@ -71,7 +72,7 @@ function wFourthOrderSmoothing(m::Vector, mref::Vector, M::AbstractMesh; Iact=1.
 end
 
 function getFreqContParams(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
-	nfreq::Int64, nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
+	 nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
 	boundsHigh::Float64, boundsLow::Float64, plotting::Bool=false,
 	plottingFunc::Function=dummy)
 	N = prod(Mr.n);
@@ -82,10 +83,12 @@ function getFreqContParams(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
 	##### Set up remote workers ############################################################################
 	########################################################################################################
 
-	Ainv = getJuliaSolver();
+	# Ainv  = getParallelJuliaSolver(Float64,Int64,numCores=4,backend=1);
+
+	Ainv  = getJuliaSolver();
 	## Choose the workers for FWI (here, its a single worker)
 	misfun = SSDFun;
-	probsMax = ceil(Integer,nfreq/nworkers());
+	# probsMax = ceil(Integer,nfreq/nworkers());
 	nprobs   = zeros(maximum(workers()));
 	pMis = getMisfitParam(pFor, Wd, Dobs, misfun, Iact, mback);
 	boundsHigh = boundsHigh*ones(Float32,N);
@@ -123,70 +126,82 @@ function getFreqContParams(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
 	end
 	return pInv, pMis, plotIntermediateResults, Iact, mback;
 end
-
-export solveInverseProblemExtendedSources
-function solveInverseProblemExtendedSources(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
-	nfreq::Int64, nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
-	boundsHigh::Float64, boundsLow::Float64, resultsFilename::String, plotting::Bool=false,
-	plottingFunc::Function=dummy)
-
-	regfunFourthOrder(m,mref,M) = wFourthOrderSmoothing(m,mref,M,Iact=Iact,C=[]);
-	pInv, pMis, plotIntermediateResults, Iact, mback = getFreqContParams(pFor, Dobs, Wd, nfreq, nx, nz, mref, Mr,
-		boundsHigh, boundsLow, plotting, plottingFunc);
-
-	regfunDiff(m,mref,M) = wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
-
-	# Run one sweep of a frequency continuation procedure.
-	mc, Dc = freqContExtendedSources(copy(mref[:]), pInv, pMis[1:2], 2, 4,Iact,mback, plotIntermediateResults, resultsFilename, 1);
-
-	pInv.regularizer = regfunDiff;
-	# Run one sweep of a frequency continuation procedure.
-	mc, Dc = freqContExtendedSources(copy(mc[:]), pInv, pMis, nfreq, 4,Iact,mback, plotIntermediateResults, resultsFilename, 1);
-
-	return mc, Dc, pInv, Iact, mback, map(x->fetch(x), pMis);
-end
+#
+# export solveInverseProblemExtendedSources
+# function solveInverseProblemExtendedSources(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
+# 	nfreq::Int64, nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
+# 	boundsHigh::Float64, boundsLow::Float64, resultsFilename::String, plotting::Bool=false,
+# 	plottingFunc::Function=dummy)
+#
+# 	regfunFourthOrder(m,mref,M) = wFourthOrderSmoothing(m,mref,M,Iact=Iact,C=[]);
+# 	pInv, pMis, plotIntermediateResults, Iact, mback = getFreqContParams(pFor, Dobs, Wd, nfreq, nx, nz, mref, Mr,
+# 		boundsHigh, boundsLow, plotting, plottingFunc);
+#
+# 	regfunDiff(m,mref,M) = wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
+#
+# 	# Run one sweep of a frequency continuation procedure.
+# 	mc, Dc = freqContExtendedSources(copy(mref[:]), pInv, pMis[1:2], 2, 4,Iact,mback, plotIntermediateResults, resultsFilename, 1);
+#
+# 	pInv.regularizer = regfunDiff;
+# 	# Run one sweep of a frequency continuation procedure.
+# 	mc, Dc = freqContExtendedSources(copy(mc[:]), pInv, pMis, nfreq, 4,Iact,mback, plotIntermediateResults, resultsFilename, 1);
+#
+# 	return mc, Dc, pInv, Iact, mback, map(x->fetch(x), pMis);
+# end
 
 
 export solveInverseProblem
 function solveInverseProblem(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
-	nfreq::Int64, nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
+	sources::SparseMatrixCSC, sourcesSubInd::Vector,
+	contDivFWI::Array{Int64}, nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
 	boundsHigh::Float64, boundsLow::Float64, resultsFilename::String, plotting::Bool=false,
 	plottingFunc::Function=dummy)
 
 	regfunFourthOrder(m,mref,M) = wFourthOrderSmoothing(m,mref,M,Iact=Iact,C=[]);
-	pInv, pMis, plotIntermediateResults, Iact, mback = getFreqContParams(pFor, Dobs, Wd, nfreq, nx, nz, mref, Mr,
+	pInv, pMis, plotIntermediateResults, Iact, mback = getFreqContParams(pFor, Dobs, Wd, nx, nz, mref, Mr,
 		boundsHigh, boundsLow, plotting, plottingFunc);
 
 	regfunDiff(m,mref,M) = wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
+	println("size pmis:" , size(pMis))
+	# Run one sweep of a frequency continuation procedure.
+	# mc, Dc = freqContExtendedSources(copy(mref[:]), sources, sourcesSubInd,
+	# pInv, pMis, contDivFWI[1:3], 4, resultsFilename, plotIntermediateResults);
+	# pInv.regularizer = regfunDiff;
+	# # Run one sweep of a frequency continuation procedure.
+	# mc, Dc = freqContExtendedSources(copy(mc[:]), sources, sourcesSubInd,
+	# pInv, pMis, contDivFWI, 4, resultsFilename, plotIntermediateResults);
+
 
 	# Run one sweep of a frequency continuation procedure.
-	mc, Dc = freqContBasic(copy(mref[:]), pInv, pMis[1:2], 2, 4, plotIntermediateResults, resultsFilename, 1);
-
+	mc, Dc = freqCont(copy(mref[:]),
+	pInv, pMis, contDivFWI[1:3], 4, resultsFilename, plotIntermediateResults);
 	pInv.regularizer = regfunDiff;
 	# Run one sweep of a frequency continuation procedure.
-	mc, Dc = freqContBasic(copy(mc[:]), pInv, pMis, nfreq, 4, plotIntermediateResults, resultsFilename, 1);
+	mc, Dc = freqCont(copy(mc[:]),
+	pInv, pMis, contDivFWI, 4, resultsFilename, plotIntermediateResults);
 
-	return mc, Dc, pInv, Iact, mback;
+
+	return mc, Dc, pInv, Iact, mback, pMis;
 end
-
-export solveInverseProblemTraceEstimation
-function solveInverseProblemTraceEstimation(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
-	nfreq::Int64, nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
-	boundsHigh::Float64, boundsLow::Float64, resultsFilename::String, plotting::Bool=false,
-	plottingFunc::Function=dummy)
-	pInv, pMis, plotIntermediateResults, Iact, mback = getFreqContParams(pFor,
-		Dobs, Wd, nfreq, nx, nz, mref, Mr,
-		boundsHigh, boundsLow, plotting, plottingFunc);
-
-	# Run one sweep of a frequency continuation procedure.
-	mc, Dc = freqContTraceEstimation(copy(mref[:]), pInv, pMis, nfreq, 4,
-			Iact, mback, plotIntermediateResults, resultsFilename, 1);
-
-	return mc, Dc, pInv, Iact, mback;
-end
+#
+# export solveInverseProblemTraceEstimation
+# function solveInverseProblemTraceEstimation(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
+# 	nfreq::Int64, nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
+# 	boundsHigh::Float64, boundsLow::Float64, resultsFilename::String, plotting::Bool=false,
+# 	plottingFunc::Function=dummy)
+# 	pInv, pMis, plotIntermediateResults, Iact, mback = getFreqContParams(pFor,
+# 		Dobs, Wd, nfreq, nx, nz, mref, Mr,
+# 		boundsHigh, boundsLow, plotting, plottingFunc);
+#
+# 	# Run one sweep of a frequency continuation procedure.
+# 	mc, Dc = freqContTraceEstimation(copy(mref[:]), pInv, pMis, nfreq, 4,
+# 			Iact, mback, plotIntermediateResults, resultsFilename, 1);
+#
+# 	return mc, Dc, pInv, Iact, mback;
+# end
 
 export solveInverseProblemNoProcs
-function solveInverseProblemNoProcs(pFor::BasicFWIparam, Dobs::Array, Wd::Array, nfreq::Int64,
+function solveInverseProblemNoProcs(pFor::FWIparam, Dobs::Array, Wd::Array, nfreq::Int64,
 	nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
 	boundsHigh::Float64, boundsLow::Float64, plotting::Bool=false, plottingFunc::Function=dummy)
 	N = prod(Mr.n);
@@ -200,7 +215,7 @@ function solveInverseProblemNoProcs(pFor::BasicFWIparam, Dobs::Array, Wd::Array,
 	Ainv = getJuliaSolver();
 	## Choose the workers for FWI (here, its a single worker)
 	misfun = SSDFun;
-	probsMax = ceil(Integer,nfreq/nworkers());
+	# probsMax = ceil(Integer,nfreq/nworkers());
 	nprobs   = zeros(maximum(workers()));
 
 	pMis = getMisfitParam(pFor, Wd, Dobs, misfun);

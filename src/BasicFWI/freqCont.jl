@@ -99,12 +99,13 @@ mSizeMat = pFor.Mesh.n .+ 1;
 m = mSizeMat[1];
 n = mSizeMat[2];
 mSizeVec = mSizeMat[1] * mSizeMat[2];
-Z = copy(pFor.originalSources);
-sizeQ = size(Z);
+# Z = copy(pFor.originalSources);
+# sizeQ = size(Z);
 nrec = size(pFor.Receivers, 2);
 sizeH = size(pFor.Ainv[1]);
+
+nsrc = size(pFor.Sources, 2);
 pFor = nothing
-nsrc = size(Z, 2);
 alpha = 2e-3;
 p = 10;
 
