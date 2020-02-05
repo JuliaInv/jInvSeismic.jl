@@ -1,5 +1,6 @@
 export freqCont, freqContExtendedSources;
-using JLD
+# using JLD
+using Multigrid.ParallelJuliaSolver
 
 """
 	function freqCont
@@ -205,11 +206,13 @@ for freqIdx = startFrom:(length(contDiv)-1)
 			# pMisSingle = take!(pMisTemp[freqs])
 			pForCurrent = pForp[freqs]
 			pMisCurrent[freqs].pFor = pForCurrent
-			Ainv = pForCurrent.ForwardSolver.Ainv;
-			println("do trans:",  pForCurrent.ForwardSolver.isTransposed)
-			println(typeof(Dp[freqs]))
+			Ainv = pForCurrent.ForwardSolver;
+			# println(typeof(Ainv))
+			# println("do trans:",  pForCurrent.ForwardSolver.isTransposed)
+			# println(typeof(Dp[freqs]))
 			# pMisCurrent[freqs].dobs = fetch(Dp[freqs])
-			HinvPs[freqs] = Ainv' \ Matrix(pForCurrent.Receivers);
+			# HinvPs[freqs] = Ainv' \ Matrix(pForCurrent.Receivers);
+			HinvPs[freqs], = solveLinearSystem(spzeros(ComplexF64,0,0), complex(Matrix(pForCurrent.Receivers)), Ainv, 1)
 			println("HINVP done");
 			# put!(pMisTemp[freqs], pMisSingle);
 		end

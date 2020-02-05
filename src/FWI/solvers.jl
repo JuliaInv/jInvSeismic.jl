@@ -4,6 +4,7 @@ using Statistics
 using jInv.Utils
 using Distributed
 using DelimitedFiles
+using Multigrid.ParallelJuliaSolver
 
 
 function calculateDobs(m::Array{Float64, 2}, pForp::Array{RemoteChannel},
@@ -83,9 +84,9 @@ function getFreqContParams(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
 	##### Set up remote workers ############################################################################
 	########################################################################################################
 
-	# Ainv  = getParallelJuliaSolver(Float64,Int64,numCores=4,backend=1);
+	Ainv  = getParallelJuliaSolver(Float64,Int64,numCores=4,backend=1);
 
-	Ainv  = getJuliaSolver();
+	# Ainv  = getJuliaSolver();
 	## Choose the workers for FWI (here, its a single worker)
 	misfun = SSDFun;
 	# probsMax = ceil(Integer,nfreq/nworkers());
@@ -164,21 +165,21 @@ function solveInverseProblem(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
 	regfunDiff(m,mref,M) = wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
 	println("size pmis:" , size(pMis))
 	# Run one sweep of a frequency continuation procedure.
-	# mc, Dc = freqContExtendedSources(copy(mref[:]), sources, sourcesSubInd,
-	# pInv, pMis, contDivFWI[1:3], 4, resultsFilename, plotIntermediateResults);
-	# pInv.regularizer = regfunDiff;
-	# # Run one sweep of a frequency continuation procedure.
-	# mc, Dc = freqContExtendedSources(copy(mc[:]), sources, sourcesSubInd,
-	# pInv, pMis, contDivFWI, 4, resultsFilename, plotIntermediateResults);
-
-
-	# Run one sweep of a frequency continuation procedure.
-	mc, Dc = freqCont(copy(mref[:]),
+	mc, Dc = freqContExtendedSources(copy(mref[:]), sources, sourcesSubInd,
 	pInv, pMis, contDivFWI[1:3], 4, resultsFilename, plotIntermediateResults);
 	pInv.regularizer = regfunDiff;
 	# Run one sweep of a frequency continuation procedure.
-	mc, Dc = freqCont(copy(mc[:]),
+	mc, Dc = freqContExtendedSources(copy(mc[:]), sources, sourcesSubInd,
 	pInv, pMis, contDivFWI, 4, resultsFilename, plotIntermediateResults);
+
+
+	# Run one sweep of a frequency continuation procedure.
+	# mc, Dc = freqCont(copy(mref[:]),
+	# pInv, pMis, contDivFWI[1:3], 4, resultsFilename, plotIntermediateResults);
+	# pInv.regularizer = regfunDiff;
+	# # Run one sweep of a frequency continuation procedure.
+	# mc, Dc = freqCont(copy(mc[:]),
+	# pInv, pMis, contDivFWI, 4, resultsFilename, plotIntermediateResults);
 
 
 	return mc, Dc, pInv, Iact, mback, pMis;
