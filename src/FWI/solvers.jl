@@ -42,9 +42,9 @@ function solveForwardProblemExtendedSources(m::Array{Float64, 2}, pForp::Array{R
 	Dobs = calculateDobs(m, pForp, omega, nfreq)
 	Wd = Array{Array}(undef, length(Dobs));
 
-	avgDobs = mean(map(dobs_j -> mean(dobs_j), Dobs[:]));
+	avgDobs = map(dobs_j -> mean(abs.(dobs_j)), Dobs[:]);
 	for k=1:length(Dobs)
-		Wd[k] = ones(size(Dobs[k])) ./ avgDobs ;
+		Wd[k] = ones(size(Dobs[k])) ./ avgDobs[k] ;
 	end
 
 	return Dobs, Wd;
@@ -100,7 +100,7 @@ function getFreqContParams(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
 	cgit 				= 8;
 	alpha 				= 1e+1;
 	pcgTol 				= 1e-3;
-	maxit 				= 5;
+	maxit 				= 1;
 	HesPrec 			= getExactSolveRegularizationPreconditioner();
 	# regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
 	regfun(m,mref,M) 	= wFourthOrderSmoothing(m,mref,M,Iact=Iact,C=[]);
