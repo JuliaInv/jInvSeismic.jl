@@ -137,9 +137,9 @@ mSizeVec = mSizeMat[1] * mSizeMat[2];
 
 nrec = size(pFor.Receivers, 2);
 nsrc = size(pFor.Sources, 2);
-alpha1 = 1e+1;
-alpha2 = 1e+1;
-stepReg = 1e-1
+alpha1 = 1e1;
+alpha2 = 1e1;
+stepReg = 1e+1
 p = 10;
 nwork = nworkers()
 nsrc = sum(length.(sourcesSubInd[1:nwork]))
@@ -182,11 +182,18 @@ for freqIdx = startFrom:(length(contDiv)-1)
 
 		Dp,pForp = getData(vec(mc), pForpCurrent);
 
-		for freqs = 1:numOfCurrentProblems
+		for freqs = 1:nworkers():numOfCurrentProblems
 			pForCurrent = pForp[freqs]
 			pMisCurrent[freqs].pFor = pForCurrent
 			Ainv = pForCurrent.ForwardSolver;
-			HinvPs[freqs], = Multigrid.ParallelJuliaSolver.solveLinearSystem(spzeros(ComplexF64,0,0), complex(Matrix(pForCurrent.Receivers)), Ainv, 1)
+			result, = Multigrid.ParallelJuliaSolver.solveLinearSystem(spzeros(ComplexF64,0,0), complex(Matrix(pForCurrent.Receivers)), Ainv, 1)
+
+			for i=0:(nworkers() -1)
+				if (i + freqs)<= numOfCurrentProblems
+					HinvPs[freqs + i] = result
+				end
+			end
+
 			println("HINVP done");
 		end
 
@@ -227,6 +234,17 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		Z1 = Z1old
 
 
+		mergedSources = zeros(ComplexF64, (mSizeVec, nsrc))
+		mergedDobs = zeros(ComplexF64, (nrec, nsrc))
+		mergedWd = zeros(ComplexF64, (nrec, nsrc))
+		for l=0:(nwork-1)
+			mergedSources[:, currentSrcInd[1+l]] = pMisCurrent[1+l].pFor.Sources
+			mergedDobs[:, currentSrcInd[1+l]] = pMisCurrent[1+l].dobs[:,:,1]
+			mergedWd[:, currentSrcInd[1+l]] = pMisCurrent[1+l].Wd[:,:,1]
+		end
+
+		# save("ext2.jld", "hps", HinvPs, "dobs", mergedDobs, "wd", mergedWd,
+		# "src", mergedSources)
 		#Print misfit at start
 		println("AT START: ", misfitCalc2())
 
@@ -291,11 +309,13 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		end
 		rhs += stepReg * Z1
 
-		Z1 = KrylovMethods.blockBiCGSTB(x-> MultAll(avgWds, HPinvsReduced, x, Z2, alpha1, stepReg), rhs,x=Z1, out=2)[1];
+		# save("ext.jld", "hps", HPinvsReduced, "dobs", mergedDobsArr, "wd", mergedWdArr,
+		# "src", mergedSourcesArr)
+		Z1 = KrylovMethods.blockBiCGSTB(x-> MultAll(avgWds, HPinvsReduced, x, Z2, alpha1, stepReg), rhs,x=Z1,maxIter=10, out=2)[1];
+		# throw("abs")
 		println("misfit at Z1:: ", misfitCalc2())
 
 	end
-	# throw("abs")
 
 	newSrc = Z1*Z2
 	for i=1:numOfCurrentProblems

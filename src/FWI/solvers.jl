@@ -42,7 +42,7 @@ function solveForwardProblemExtendedSources(m::Array{Float64, 2}, pForp::Array{R
 	Dobs = calculateDobs(m, pForp, omega, nfreq)
 	Wd = Array{Array}(undef, length(Dobs));
 
-	avgDobs = map(dobs_j -> mean(abs.(dobs_j)), Dobs[:]);
+	avgDobs = map(dobs_j -> mean(dobs_j), Dobs[:]);
 	for k=1:length(Dobs)
 		Wd[k] = ones(size(Dobs[k])) ./ avgDobs[k] ;
 	end
