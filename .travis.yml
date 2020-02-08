@@ -5,14 +5,12 @@ os:
   - linux
 
 julia:
-  - 1.0
-  - 1.1
+  - 1.3
   
 notifications:
   email: false
  
 before_install:
-   #- julia -e 'using Pkg; Pkg.add("https://github.com/JuliaInv/jInv.jl","jInv"); Pkg.build("jInv");'
    - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
 
 script:

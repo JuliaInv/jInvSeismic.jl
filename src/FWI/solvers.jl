@@ -62,15 +62,15 @@ function solveForwardProblemNoProcs(m::Array{Float64, 2}, pFor::FWIparam,
 end
 
 
-function wFourthOrderSmoothing(m::Vector, mref::Vector, M::AbstractMesh; Iact=1.0, C=[])
-	dm = m.-mref;
-	d2R = wdiffusionReg(m,mref,M,Iact = Iact,C = C)[3];
-	clear!(M);
-	d2R = d2R'*d2R;
-	dR  = d2R*dm;
-	Rc  = 0.5*dot(dm,dR);
-   return Rc,dR,d2R
-end
+# function wFourthOrderSmoothing(m::Vector, mref::Vector, M::AbstractMesh; Iact=1.0, C=[])
+	# dm = m.-mref;
+	# d2R = wdiffusionReg(m,mref,M,Iact = Iact,C = C)[3];
+	# clear!(M);
+	# d2R = d2R'*d2R;
+	# dR  = d2R*dm;
+	# Rc  = 0.5*dot(dm,dR);
+   # return Rc,dR,d2R
+# end
 
 function getFreqContParams(pFor::Array{RemoteChannel}, Dobs::Array, Wd::Array,
 	 nx::Int64, nz::Int64, mref::Array{Float64,2}, Mr::RegularMesh,
