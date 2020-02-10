@@ -83,7 +83,7 @@ version = "3.3.9+3"
 
 [[FactoredEikonalFastMarching]]
 deps = ["KrylovMethods", "LinearAlgebra", "ParSpMatVec", "Printf", "Statistics", "Test", "jInv"]
-git-tree-sha1 = "2362d2293fbcc8f5e1ec97403591420f1e319896"
+git-tree-sha1 = "2ab8e9474b45f06ec74655c702174284ee6d951d"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaInv/FactoredEikonalFastMarching.jl.git"
 uuid = "a21af1b0-b122-11e9-3f46-a5fb68b7f21f"
@@ -91,9 +91,9 @@ version = "0.1.0"
 
 [[FileIO]]
 deps = ["Pkg"]
-git-tree-sha1 = "74585bf1f7ed7259e166011e89f49363d7fa89a6"
+git-tree-sha1 = "2c84c57aced468fa21763c66d3bef33adcd09ec7"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.2.1"
+version = "1.2.2"
 
 [[HDF5]]
 deps = ["BinaryProvider", "Blosc", "CMakeWrapper", "Libdl", "Mmap"]
@@ -103,7 +103,7 @@ version = "0.12.5"
 
 [[Helmholtz]]
 deps = ["FactoredEikonalFastMarching", "KrylovMethods", "LinearAlgebra", "Multigrid", "ParSpMatVec", "Printf", "SparseArrays", "Test", "jInv"]
-git-tree-sha1 = "54e07576ef3db2700b1703afa1589558d9f7dc4f"
+git-tree-sha1 = "29d8f4f1af43e4c0e85fb039f5aeabce980919d2"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaInv/Helmholtz.jl.git"
 uuid = "e64c32b0-b297-11e9-3d04-db45b5588c0d"
@@ -171,7 +171,7 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[Multigrid]]
 deps = ["Distributed", "KrylovMethods", "LinearAlgebra", "ParSpMatVec", "SparseArrays", "Test", "jInv"]
-git-tree-sha1 = "e50d35f7cd5bbd8f299959aaf752cff1f312933e"
+git-tree-sha1 = "c14bdd4d2ea31ba00e122ab0434c1a9375eac756"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaInv/Multigrid.jl.git"
 uuid = "3ee21790-adf8-11e9-0909-2103a2f09851"
@@ -264,7 +264,7 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [[jInv]]
 deps = ["Distributed", "KrylovMethods", "LinearAlgebra", "ParSpMatVec", "Pkg", "Printf", "SparseArrays", "Test"]
-git-tree-sha1 = "b13c33b5eb69dcc87ba634ae5c6c178ef5fcf447"
+git-tree-sha1 = "2ef0cfc82470ec91704fa18adf368e802edef44d"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaInv/jInv.jl.git"
 uuid = "3dacf901-f8cd-5544-86ed-7a705f85c244"

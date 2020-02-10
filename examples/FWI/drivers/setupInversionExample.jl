@@ -25,36 +25,6 @@ using DelimitedFiles
 using jInv.ForwardShare
 using KrylovMethods
 end
-# function readModelAndGenerateMeshMref(readModelFolder::String,modelFilename::String,dim::Int64,pad::Int64,domain::Vector{Float64},newSize::Vector=[],velBottom::Float64=0.0,velHigh::Float64=0.0)
-# ########################## m,mref are in Velocity here. ###################################
-# 	m = readdlm(string(readModelFolder,"/",modelFilename));
-# 	m = m*1e-3;
-# 	m = copy(m');
-# 	mref = getSimilarLinearModel(m,velBottom,velHigh);
-#
-# 	sea = abs.(m[:] .- minimum(m)) .< 7e-2;
-# 	mref[sea] = m[sea];
-# 	if newSize!=[]
-# 		m    = expandModelNearest(m,   collect(size(m)),newSize);
-# 		mref = expandModelNearest(mref,collect(size(mref)),newSize);
-# 	end
-#
-# 	Minv = getRegularMesh(domain,collect(size(m)));
-#
-# 	(mPadded,MinvPadded) = addAbsorbingLayer(m,Minv,pad);
-# 	(mrefPadded,MinvPadded) = addAbsorbingLayer(mref,Minv,pad);
-#
-# 	N = prod(MinvPadded.n.+1);
-# 	boundsLow  = minimum(mPadded);
-# 	boundsHigh = maximum(mPadded);
-#
-# 	boundsLow  = ones(N)*boundsLow;
-# 	boundsLow = convert(Array{Float32},boundsLow);
-# 	boundsHigh = ones(N)*boundsHigh;
-# 	boundsHigh = convert(Array{Float32},boundsHigh);
-#
-# 	return (mPadded,MinvPadded,mrefPadded,boundsHigh,boundsLow);
-# end
 
 dim     = 2;
 pad     = 30;
