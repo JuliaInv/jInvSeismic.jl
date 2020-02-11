@@ -103,7 +103,7 @@ version = "0.12.5"
 
 [[Helmholtz]]
 deps = ["FactoredEikonalFastMarching", "KrylovMethods", "LinearAlgebra", "Multigrid", "ParSpMatVec", "Printf", "SparseArrays", "Test", "jInv"]
-git-tree-sha1 = "29d8f4f1af43e4c0e85fb039f5aeabce980919d2"
+git-tree-sha1 = "4c2e664dd71db5402159bfce7756e1d4826df43f"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaInv/Helmholtz.jl.git"
 uuid = "e64c32b0-b297-11e9-3d04-db45b5588c0d"
@@ -171,7 +171,7 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[Multigrid]]
 deps = ["Distributed", "KrylovMethods", "LinearAlgebra", "ParSpMatVec", "SparseArrays", "Test", "jInv"]
-git-tree-sha1 = "c14bdd4d2ea31ba00e122ab0434c1a9375eac756"
+git-tree-sha1 = "cba04adf1a89ee3e8c0fcf06bb64b08c1f47093c"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaInv/Multigrid.jl.git"
 uuid = "3ee21790-adf8-11e9-0909-2103a2f09851"
@@ -197,7 +197,7 @@ uuid = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 version = "0.12.0"
 
 [[Pkg]]
-deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
+deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Test", "UUIDs"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[Printf]]

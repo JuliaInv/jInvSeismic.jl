@@ -1,3 +1,4 @@
+export updateWd,multWd
 function updateWd(pMis::Array{RemoteChannel},Dc::Array{RemoteChannel})
 @sync begin
 	@async begin
@@ -12,7 +13,7 @@ end
 function updateWd(pMisRF::RemoteChannel,Dc::RemoteChannel)
 pMis  = take!(pMisRF)
 Dc = fetch(Dc);
-pMis.Wd = 1./(real(Dc - pMis.dobs) + 1e-3*mean(abs(pMis.dobs[:]))) + 1im./(imag(Dc - pMis.dobs) + 1e-3*mean(abs(pMis.dobs[:])));
+pMis.Wd = 1.0./(real(Dc - pMis.dobs) + 1e-3*mean(abs(pMis.dobs[:]))) + 1im./(imag(Dc - pMis.dobs) + 1e-3*mean(abs(pMis.dobs[:])));
 put!(pMisRF,pMis)
 return pMisRF;
 end

@@ -34,10 +34,10 @@ if plotting
 	close("all")
 end
 
-
-@everywhere FWIDriversPath = "./drivers/";
+println(pwd())
+@everywhere FWIDriversPath = "./";
 include(string(FWIDriversPath,"prepareFWIDataFiles.jl"));
-include(string(FWIDriversPath,"setupJointInversion.jl"));
+include(string(FWIDriversPath,"setupFWI.jl"));
 # @everywhere include(string(FWIDriversPath,"remoteChangePmis.jl"));
 
 
@@ -47,16 +47,19 @@ modelDir 	= pwd();
 
 ########################################################################################################
 dim     = 2;
-pad     = 30;
-jumpSrc = 5;
+# pad     = 30;
+# jumpSrc = 5;
+# newSize = [600,300];
+
+pad     = 15;
+jumpSrc = 3;
 newSize = [300,100];
-#newSize = [600,300];
 
 offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
 println("Offset is: ",offset," cells.")
 (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 # omega = [2.0,2.5,3.5,4.5,6.0]*2*pi;
-omega = [2.0,2.5]*2*pi;
+omega = [2.0,2.5,3.0]*2*pi;
 maxBatchSize = 256;
 useFilesForFields = false;
 
@@ -72,11 +75,12 @@ println("omega*maximum(h): ",omega*maximum(Minv.h)*sqrt(maximum(1.0./(boundsLow.
 
 ABLpad = pad + 4;
 
-Ainv  = getParallelJuliaSolver(ComplexF64,Int64,numCores=2,backend=3);
+Ainv  = getParallelJuliaSolver(ComplexF64,Int64,numCores=4,backend=3);
 
 workersFWI = workers();
 println(string("The workers that we allocate for FWI are:",workersFWI));
-prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)), pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)), 
+									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 
@@ -105,9 +109,10 @@ end
 ########################################################################################################################
 ########################################################################################################################
 ########################################################################################################################
-setupFWIonly = true;
+   
 (Q,P,pMis,SourcesSubInd,contDiv,Iact,sback,mref,boundsHigh,boundsLow) = 
-   setupJointInversion(m,dataFilenamePrefix,plotting,workersFWI,maxBatchSize,Ainv,setupFWIonly,SSDFun,1.0,useFilesForFields);
+	setupFWI(m,dataFilenamePrefix,plotting,workersFWI,maxBatchSize,Ainv,SSDFun,useFilesForFields);
+   
 ########################################################################################################
 # Setting up the inversion for slowness instead of velocity:
 ########################################################################################################
@@ -162,4 +167,10 @@ pInv = getInverseParam(Minv,modfun,regfun,alpha,mref[:],boundsLow,boundsHigh,
                          maxStep=maxStep,pcgMaxIter=cgit,pcgTol=pcgTol,
 						 minUpdate=1e-3, maxIter = maxit,HesPrec=HesPrec);
 mc = copy(mref[:]);					 
-freqCont(mc, pInv, pMis,contDiv, 2,resultsFilename,dump,"",1,0,GN);
+mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",1,0,GN);
+mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
+mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
+
+
+
+

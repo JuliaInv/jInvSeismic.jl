@@ -1,7 +1,7 @@
 using SparseArrays
 using LinearAlgebra
 
-function setupFWI(m,filenamePrefix::String,resultsOutputFolderAndPrefix::String,plotting::Bool,
+function setupFWI(m,filenamePrefix::String,plotting::Bool,
 		workersFWI::Array{Int64,1}=workers(),maxBatchSize::Int64 = 48,
 		Ainv::AbstractSolver = getJuliaSolver(), misfun::Function=SSDFun,useFilesForFields::Bool = false)
 
@@ -22,8 +22,6 @@ boundsLow = read(file,"boundsLow");
 boundsHigh = read(file,"boundsHigh");
 mref =  read(file,"mref");
 close(file);
-
-resultsFilename = string(resultsOutputFolderAndPrefix,tuple((Minv.n.+1)...),".dat");
 
 
 ### Read receivers and sources files
@@ -60,8 +58,6 @@ Iact = Iact[:,mask .== 0.0];
 boundsLow = Iact'*boundsLow;
 boundsHigh = Iact'*boundsHigh;
 mref = Iact'*mref[:];
-
-misfun = SSDFun;
 
 ####################################################################################################################
 ####################################################################################################################

@@ -14,5 +14,6 @@ include("BoundModel.jl");
 include("readModelAndGenerateMeshMref.jl");
 include("readModelAndGenerateNodalMeshMref.jl");
 include("getHelmholtzOperator.jl")
+include("remoteChangePmis.jl")
 
 end
