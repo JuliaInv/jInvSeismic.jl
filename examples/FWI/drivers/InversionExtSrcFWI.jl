@@ -21,6 +21,7 @@ NumWorkers = 1;
 	using jInv.LinearSolvers
 	using jInvSeismic.FWI
 	using jInv.Mesh
+	using Multigrid.ParallelJuliaSolver
 	using jInv.Utils
 	using DelimitedFiles
 	using jInv.ForwardShare
@@ -79,9 +80,8 @@ Ainv  = getParallelJuliaSolver(ComplexF64,Int64,numCores=4,backend=3);
 
 workersFWI = workers();
 println(string("The workers that we allocate for FWI are:",workersFWI));
-prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)), 
-									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
-
+# prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)), 
+									# pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 ########################################################################################################################
@@ -167,10 +167,24 @@ pInv = getInverseParam(Minv,modfun,regfun,alpha,mref[:],boundsLow,boundsHigh,
                          maxStep=maxStep,pcgMaxIter=cgit,pcgTol=pcgTol,
 						 minUpdate=1e-3, maxIter = maxit,HesPrec=HesPrec);
 mc = copy(mref[:]);					 
-mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",1,0,GN);
-mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
-mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
+# mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",1,0,GN);
+# mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
+# mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
 
+p = 10;
+N_nodes = prod(Minv.n.+1);
+nsrc = size(Q,2);
+Z1 = rand(ComplexF64,(N_nodes, p)) .+ 0.01;
+Z2 = rand(ComplexF64, (p, nsrc)) .+ 0.01;
+pInv.maxIter = 1;
+
+# function freqContExtendedSources(mc,Z1,Z2,originalSources::SparseMatrixCSC,nrec, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
+			# resultsFilename::String,dumpFun::Function,mode::String="",startFrom::Int64 = 1,cycle::Int64=0,method::String="projGN")
+
+
+mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 3,resultsFilename,dump,"",1,0,GN);
+# mc, = freqContExtendedSources(mc,Z1,Z2,Q,SourcesSubInd, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
+# mc, = freqContExtendedSources(mc,,Z1,Z2,Q,SourcesSubInd, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
 
 
 

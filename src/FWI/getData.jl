@@ -16,8 +16,8 @@ function getData(m,pFor::FWIparam,doClear::Bool=false)
     nrec  		= size(P,2) 
     nsrc  		= size(Q,2)
 	
-	
 	An2cc = getNodalAverageMatrix(M);
+	
     m = An2cc'*m;
 	gamma = An2cc'*gamma;
 	

@@ -94,58 +94,81 @@ function calculateZ2(misfitCalc::Function, p::Integer, nsrc::Integer,
 	nrec::Integer, nwork::Integer,
 	numOfCurrentProblems::Integer, Wd::Array, HinvPs::Array,
 	pMisCurrent::Array{MisfitParam}, currentSrcInd::Array, Z1::Matrix, alpha::Float64)
-
-	println("misfit at start:: ", misfitCalc())
+	
+	#|| Hz - D||^2 -> Z = (H^TH)^{-1}H^TD
+	
+	## HERE WE  NEED TO MAKE SURE THAT Wd is equal in its real and imaginary parts.
 	rhs = zeros(ComplexF64, (p, nsrc));
-	mSizeVec = size(Z1, 1);
-
 	lhs = zeros(ComplexF64, (p,p));
-
-	for i = 1:nwork:numOfCurrentProblems
-		mergedSources = zeros(ComplexF64, (mSizeVec, nsrc))
-		mergedDobs = zeros(ComplexF64, (nrec, nsrc))
-		mergedWd = zeros(ComplexF64, (nrec, nsrc))
-		for l=0:(nwork-1)
-			mergedSources[:, currentSrcInd[i+l]] = pMisCurrent[i+l].pFor.Sources
-			mergedDobs[:, currentSrcInd[i+l]] = pMisCurrent[i+l].dobs[:,:,1]
-			mergedWd[:, currentSrcInd[i+l]] = Wd[i+l]
-		end
-		pm = pMisCurrent[i]
-		lhs += (abs(mean(mergedWd))^2) .* Z1' * HinvPs[i] * HinvPs[i]' * Z1;
-		rhs += (abs(mean(mergedWd))^2) .* Z1' * HinvPs[i] * (-HinvPs[i]' * mergedSources + mergedDobs);
+	for i = 1:nfreq
+		lhs .+= (real(mergedWd[f]).^2) .* Z1' * HinvPs[i] * HinvPs[i]' * Z1;
+		rhs .+= (real(mergedWd[f]).^2) .* Z1' * HinvPs[i] * (-mergedRc[i]);
 	end
-
 	lhs += alpha * I;
 
 	return lhs\rhs;
 end
 
+function misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2,HinvPs)
+	## HERE WE  NEED TO MAKE SURE THAT Wd is equal in its real and imaginary parts.
+	sum = 0.0;
+	for i = 1:nfreq
+		res = SSDfun((HinvPs[i]' * Z1) * Z2,mergedRc[i],mergedWd[i]);
+		sum += res;
+	end
+	sum	+= alpha1 * norm(Z1)^2 + alpha2 * norm(Z2)^2;
+	return sum;
+end
+
+function MultOp(HPinv, R, Z2)
+	return HPinv' * R * Z2
+end
+
+function MultOpT(HPinv, R, Z2)
+	return HPinv * R * Z2'
+end
+
+function MultAll(avgWds, HPinvs, R, Z2, alpha, stepReg)
+	sum = zeros(ComplexF64, size(R))
+	for i = 1:length(avgWds)
+		sum += MultOpT(HPinvs[i], (avgWds[i]^2) .* MultOp(HPinvs[i], R, Z2), Z2)
+	end
+	return sum + (alpha+stepReg)*R;
+end
+
+function calculateZ1(misfitCalc::Function, nfreq::Integer, mergedWd::Array, HinvPs::Array, Z1::Matrix,Z2::Matrix, alpha1::Float64,stepReg::Float64)
+	## HERE WE  NEED TO MAKE SURE THAT Wd is equal in its real and imaginary parts.
+	rhs = zeros(ComplexF64, size(Z1));
+	for i = 1:nfreq
+		rhs .+= (real(mergedWd[f]).^2) .*  MultOpT(HinvPs[i], -mergedRc[i], Z2);
+	end
+	rhs .+= (stepReg) .* Z1
+	Z1 = KrylovMethods.blockBiCGSTB(x-> MultAll(avgWds, HPinvsReduced, x, Z2, alpha1, stepReg), rhs,x=copy(Z1),maxIter=50, out=2)[1];
+	return Z1;
+end
 
 
-function freqContExtendedSources(mc, sources::SparseMatrixCSC, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
+function freqContExtendedSources(mc,Z1,Z2,originalSources::SparseMatrixCSC,nrcv, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
 			resultsFilename::String,dumpFun::Function,mode::String="",startFrom::Int64 = 1,cycle::Int64=0,method::String="projGN")
 Dc = 0;
 flag = -1;
 HIS = [];
 println("START EX")
 
-pFor = fetch(pMis[1]).pFor
-mSizeMat = pFor.Mesh.n .+ 1;
-m = mSizeMat[1];
-n = mSizeMat[2];
-mSizeVec = mSizeMat[1] * mSizeMat[2];
 
-nrec = size(pFor.Receivers, 2);
-nsrc = size(pFor.Sources, 2);
+N_nodes = prod(pInv.MInv.n .+ 1);
+nsrc = size(originalSources, 2);
+
 alpha1 = 1e1;
 alpha2 = 1e1;
 stepReg = 1e+1
-p = 10;
+p = size(Z1,2);
 nwork = nworkers()
-nsrc = sum(length.(sourcesSubInd[1:nwork]))
+
+
+
 for freqIdx = startFrom:(length(contDiv)-1)
-	Z1 = rand(ComplexF64,(m*n, p)) .+ 0.01;
-	Z2 = rand(ComplexF64, (p, nsrc)) .+ 0.01;
+	
 	if mode=="1stInit"
 		reqIdx1 = freqIdx;
 		if freqIdx > 1
@@ -160,189 +183,80 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		reqIdx2 = freqIdx;
 	end
 	currentProblems = contDiv[reqIdx1]:contDiv[reqIdx2+1]-1;
-	numOfCurrentProblems = length(currentProblems);
-	println("\n======= New Continuation Stage: selecting continuation batches: ",reqIdx1," to ",reqIdx2,"=======\n");
 	pMisTemp = pMis[currentProblems];
+	numOfCurrentProblems = length(pMisTemp);
+	println("\n======= New Continuation Stage: selecting continuation batches: ",reqIdx1," to ",reqIdx2,"=======\n");
+	
 	currentSrcInd = sourcesSubInd[currentProblems]
 	pInv.mref = mc[:];
 	# iterations of minize Z1,Z2 and then one gauss newton step
+	
+	currentWd = getWd(pMisTemp);
+	currentDobs = getDobs(pMisTemp);
+	nfreq = div(length(pMisTemp),nwork);
+	
+	mergedDobs = Array{Array{ComplexF64}}(undef,nfreq);
+	#mergedWd = Array{Array{ComplexF64}}(undef,nfreq);
+	mergedWd = zeros(ComplexF64,nfreq)
+	for f = 1:nfreq
+		mergedDobs[f] = zeros(nrcv,nsrc);
+		#mergedWd[f] = zeros(nrcv,nsrc);
+		for l = 1:nwork
+			mergedDobs[f][:, currentSrcInd[l]] .= currentDobs[f*(nwork-1)+l]
+			# mergedWd[f][:, currentSrcInd[l]] = currentWd[f*(nwork-1)+l]
+			mergedWd[f] .= mean(currentWd[f*(nwork-1)+l]);
+		end
+	end
+	OrininalSourcesDivided = Array{SparseMatrixCSC}(undef,length(currentSrcInd));
+	for k=1:length(currentSrcInd)
+		OrininalSourcesDivided = originalSources(:,currentSrcInd[k]);
+	end
+	
 	for j = 1:5
-		mergedSources = zeros(mSizeVec, nsrc)
-		mergedDobs = zeros(nrec, nsrc)
-		mergedWd = zeros(nrec, nsrc)
-
-		pMisCurrent = map(fetch, pMisTemp);
-		for pm in pMisCurrent
-			pm.pFor.Sources = pm.pFor.OriginalSources
-		end
-		Wd = map(pm -> pm.Wd[:,:,1], pMisCurrent)
-		HinvPs = Vector{Array}(undef, numOfCurrentProblems);
+		setSources(pMisTemp,OrininalSourcesDivided);
+		# Here we get the current data with clean sources. Also define Ainv (which should be defined already but never mind...). 
 		t1 = time_ns();
-		pForpCurrent =  map(x->x.pFor, pMisCurrent);
+		Dc, = computeMisfit(mc,pMisTemp,false);
+		e1 = time_ns();
+		println("runtime of misfit");
+		println((e1 - t1)/1.0e9);
 
-		Dp,pForp = getData(vec(mc), pForpCurrent);
-
-
-		#Calculate HinPs
-		for freqs = 1:nworkers():numOfCurrentProblems
-			pForCurrent = pForp[freqs]
-			pMisCurrent[freqs].pFor = pForCurrent
-			Ainv = pForCurrent.ForwardSolver;
-			result, = Multigrid.ParallelJuliaSolver.solveLinearSystem(spzeros(ComplexF64,0,0), complex(Matrix(pForCurrent.Receivers)), Ainv, 1)
-
-			for i=0:(nworkers() -1)
-				if (i + freqs)<= numOfCurrentProblems
-					HinvPs[freqs + i] = result
-				end
-			end
-
-			println("HINVP done");
-		end
-
+		t1 = time_ns();
+		HinvPs = computeHinvTRec(pMisTemp(1:nwork:numOfCurrentProblems));
 		e1 = time_ns();
 		println("runtime of HINVPs");
 		println((e1 - t1)/1.0e9);
-
+		
+		mergedRc = Array{Array{ComplexF64}}(undef,nfreq); # Rc = Dc-Dobs, where Dc is the clean (wrt Z1,Z2) simulated data
+		for f = 1:nfreq
+			mergedRc[f] = zeros(ComplexF64,nrcv,nsrc);
+			for l = 1:nwork
+				mergedRc[f][:, currentSrcInd[l]] = fetch(Dc[f*(nwork-1)+l])
+			end
+			mergedRc[f] .-= mergedDobs[f];
+		end
 		# iterations of alternating minimization between Z1 and Z2
+		println("Zero Z2: ", misfitCalc2(zeros(ComplexF64, (N_nodes, p)),zeros(ComplexF64, (p, nsrc)),mergedWd,mergedRc,nfreq,nwork,alpha1,alpha2))
 		for iters = 1:10
-			function misfitCalc2()
-				sum = 0;
+			#Print misfit at start
+			println("AT START: ", misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,nwork,alpha1,alpha2))
 
-				for i = 1:nwork:numOfCurrentProblems
-					mergedSources = zeros(ComplexF64, (mSizeVec, nsrc))
-					mergedDobs = zeros(ComplexF64, (nrec, nsrc))
-					mergedWd = zeros(ComplexF64, (nrec, nsrc))
-					for l=0:(nwork-1)
-						mergedSources[:, currentSrcInd[i+l]] = pMisCurrent[i+l].pFor.Sources
-						mergedDobs[:, currentSrcInd[i+l]] = pMisCurrent[i+l].dobs[:,:,1]
-						mergedWd[:, currentSrcInd[i+l]] = pMisCurrent[i+l].Wd[:,:,1]
-					end
+			Z2 = calculateZ2(misfitCalc2, p, nsrc,nrcv,nwork, numOfCurrentProblems, Wd, HinvPs, pMisCurrent, currentSrcInd, Z1, alpha2);
 
-					res = HinvPs[i]' * (mergedSources + Z1 * Z2) - mergedDobs
-					sum +=  dot((mergedWd) .* res, (mergedWd).*res);
-				end
+			println("misfit after Z2 update:: ", misfitCalc2(Z1,Z2,mergedWd,mergedSources,mergedDobs,numOfCurrentProblems,nwork,alpha1,alpha2))
 
-				sum	+= alpha1 * norm(Z1)^2 + alpha2 * norm(Z2)^2;
-				return sum;
-			end
-
-		# Print misfit without Z1,Z2
-		Z2old = Z2
-		Z1old = Z1
-		Z2 = zeros(ComplexF64, (p, nsrc));
-		Z1 = zeros(ComplexF64, (mSizeVec, p));
-		println("Zero Z2: ", misfitCalc2())
-		Z2 = Z2old
-		Z1 = Z1old
-
-
-		mergedSources = zeros(ComplexF64, (mSizeVec, nsrc))
-		mergedDobs = zeros(ComplexF64, (nrec, nsrc))
-		mergedWd = zeros(ComplexF64, (nrec, nsrc))
-		for l=0:(nwork-1)
-			mergedSources[:, currentSrcInd[1+l]] = pMisCurrent[1+l].pFor.Sources
-			mergedDobs[:, currentSrcInd[1+l]] = pMisCurrent[1+l].dobs[:,:,1]
-			mergedWd[:, currentSrcInd[1+l]] = pMisCurrent[1+l].Wd[:,:,1]
+			Z1 = calculateZ1(misfitCalc2, p, nsrc,nrcv,nwork, numOfCurrentProblems, Wd, HinvPs, pMisCurrent, currentSrcInd, Z1, alpha2);
+			
+			println("misfit after Z1 update:: ", misfitCalc2(Z1,Z2,mergedWd,mergedSources,mergedDobs,numOfCurrentProblems,nwork,alpha1,alpha2))
 		end
-
-		# save("ext2.jld", "hps", HinvPs, "dobs", mergedDobs, "wd", mergedWd,
-		# "src", mergedSources)
-		#Print misfit at start
-		println("AT START: ", misfitCalc2())
-
-		Z2 = calculateZ2(misfitCalc2, p, nsrc,nrec,nwork, numOfCurrentProblems, Wd, HinvPs,
-			pMisCurrent, currentSrcInd, Z1, alpha2);
-
-		println("misfit at Z2:: ", misfitCalc2())
-
-
-
-		function MultOp(HPinv, R, Z2)
-			return HPinv' * R * Z2
+		
+		# Update the pMis with new sources
+		newSrc = Z1*Z2
+		NewSourcesDivided = Array{SparseMatrixCSC}(undef,length(currentSrcInd));
+		for k=1:length(currentSrcInd)
+			NewSourcesDivided[k] = originalSources(:,currentSrcInd[k]) + newSrc(:,currentSrcInd[k]);
 		end
-
-		function MultOpT(HPinv, R, Z2)
-			return HPinv * R * Z2'
-		end
-
-		function MultAll(avgWds, HPinvs, R, Z2, alpha, stepReg)
-			sum = zeros(ComplexF64, size(R))
-			for i = 1:length(avgWds)
-				sum += MultOpT(HPinvs[i], (avgWds[i]^2) .* MultOp(HPinvs[i], R, Z2), Z2)
-			end
-			return sum + alpha * R + stepReg * R
-		end
-
-
-		#Merge data for each frequency
-		numOfFreqs = length(1:nwork:numOfCurrentProblems);
-		mergedSourcesArr = Vector{Array}(undef,numOfFreqs)
-		mergedDobsArr = Vector{Array}(undef, numOfFreqs)
-		mergedWdArr = Vector{Array}(undef, numOfFreqs)
-		HPinvsReduced = Vector{Array}(undef, numOfFreqs)
-		index = 1
-		for i = 1:nwork:numOfCurrentProblems
-			mergedSources = zeros(ComplexF64, (mSizeVec, nsrc))
-			mergedDobs = zeros(ComplexF64, (nrec, nsrc))
-			mergedWd = zeros(ComplexF64, (nrec, nsrc))
-			for l=0:(nwork-1)
-				mergedSources[:, currentSrcInd[i+l]] = pMisCurrent[i+l].pFor.Sources
-				mergedDobs[:, currentSrcInd[i+l]] = pMisCurrent[i+l].dobs[:,:,1]
-				mergedWd[:, currentSrcInd[i+l]] = Wd[i+l]
-			end
-			mergedSourcesArr[index] = mergedSources
-			mergedDobsArr[index] = mergedDobs
-			mergedWdArr[index] = mergedWd
-			HPinvsReduced[index] = HinvPs[i]
-			index += 1
-		end
-
-		avgWds = Vector{Float64}(undef, numOfFreqs)
-
-		Rc = Vector{Array}(undef, numOfFreqs)
-		for i=1:numOfFreqs
-			avgWds[i] = abs(mean(mergedWdArr[i]))
-			Rc[i] = (avgWds[i]^2) .* (mergedDobsArr[i] - HPinvsReduced[i]' * mergedSourcesArr[i])
-		end
-
-		rhs = zeros(ComplexF64, size(Z1))
-		for i = 1:numOfFreqs
-			rhs += MultOpT(HPinvsReduced[i], Rc[i], Z2)
-		end
-		rhs += stepReg * Z1
-
-		Z1 = KrylovMethods.blockBiCGSTB(x-> MultAll(avgWds, HPinvsReduced, x, Z2, alpha1, stepReg), rhs,x=Z1,maxIter=10, out=2)[1];
-		println("misfit at Z1:: ", misfitCalc2())
-
-	end
-
-
-	# Update the pMis with new sources
-	newSrc = Z1*Z2
-	for i=1:numOfCurrentProblems
-		pMisCurrent[i].pFor.Sources = pMisCurrent[i].pFor.OriginalSources + newSrc[:,currentSrcInd[i]]
-	end
-	pForpCurrent =  map(x->x.pFor, pMisCurrent);
-	Dp,pForp = getData(vec(mc), pForpCurrent);
-
-	for freqs = 1:numOfCurrentProblems
-		pForCurrent = pForp[freqs]
-		pMisCurrent[freqs].pFor = pForCurrent
-	end
-
-	# Update all sources
-	for i= 1:length(pMis)
-		temp = take!(pMis[i])
-		temp.pFor.Sources = temp.pFor.OriginalSources + newSrc[:, sourcesSubInd[i]]
-		put!(pMis[i], temp)
-	end
-
-	#update sources for current problems, maybe not needed?
-	for i=1:numOfCurrentProblems
-		temp = take!(pMisTemp[i])
-		temp.pFor.Sources = temp.pFor.OriginalSources + newSrc[:, currentSrcInd[i]]
-		put!(pMisTemp[i], pMisCurrent[i])
-	end
+		setSources(pMisTemp,NewSourcesDivided);
 
 		if resultsFilename == ""
 			filename = "";
@@ -350,10 +264,10 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		else
 			Temp = splitext(resultsFilename);
 			if cycle==0
-				filename = string(Temp[1],"_FC",freqIdx,"_GN",Temp[2]);
+				filename = string(Temp[1],"_FC",freqIdx,"_",j,"_GN",Temp[2]);
 				hisMatFileName  = string(Temp[1],"_FC",freqIdx);
 			else
-				filename = string(Temp[1],"_Cyc",cycle,"_FC",freqIdx,"_GN",Temp[2]);
+				filename = string(Temp[1],"_Cyc",cycle,"_FC",freqIdx,"_",j,"_GN",Temp[2]);
 				hisMatFileName  =  string(Temp[1],"_Cyc",cycle,"_FC",freqIdx);
 			end
 		end
@@ -381,5 +295,5 @@ for freqIdx = startFrom:(length(contDiv)-1)
 	end
 
 end
-return mc,Dc,flag,HIS;
+return mc,Z1,Z2,Dc,flag,HIS;
 end
