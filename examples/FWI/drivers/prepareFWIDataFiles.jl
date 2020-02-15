@@ -4,7 +4,7 @@ using FFTW
 
 function prepareFWIDataFiles(m,Minv::RegularMesh,mref,boundsHigh,boundsLow,
 							filenamePrefix::String,omega::Array{Float64,1},waveCoef::Array{ComplexF64,1},
-							pad::Int64,ABLpad::Int64,jump::Int64,offset::Int64=prod(Minv.n+1),workerList = workers(), 
+							pad::Int64,ABLpad::Int64,jump::Int64,offset::Int64=prod(Minv.n+1),workerList = workers(),
 							maxBatchSize::Int64=48, Ainv::AbstractSolver = getMUMPSsolver([],0,0,2),useFilesForFields::Bool = false,calcTravelTime::Bool=false)
 
 ########################## m is in Velocity here. ###################################
@@ -12,9 +12,9 @@ RCVfile = string(filenamePrefix,"_rcvMap.dat");
 SRCfile = string(filenamePrefix,"_srcMap.dat");
 writeSrcRcvLocFile(SRCfile,Minv,ABLpad,jump);
 writeSrcRcvLocFile(RCVfile,Minv,ABLpad,1);
-	
+
 dataFullFilenamePrefix = string(filenamePrefix,"_freq");
-gamma = prepareFWIDataFiles2(m, Minv, filenamePrefix,dataFullFilenamePrefix,omega,waveCoef,pad,ABLpad,offset,workerList,maxBatchSize,Ainv,useFilesForFields);	
+gamma = prepareFWIDataFiles2(m, Minv, filenamePrefix,dataFullFilenamePrefix,omega,waveCoef,pad,ABLpad,offset,workerList,maxBatchSize,Ainv,useFilesForFields);
 
 HO = false;
 if calcTravelTime
@@ -35,11 +35,11 @@ write(file,"waveCoef",waveCoef);
 if calcTravelTime
 	write(file,"HO",HO);
 end
-close(file);	
+close(file);
 end
 
 
-function prepareFWIDataFiles2(m, Minv::RegularMesh, filenamePrefix::String,dataFullFilenamePrefix::String, omega::Array{Float64,1}, 
+function prepareFWIDataFiles2(m, Minv::RegularMesh, filenamePrefix::String,dataFullFilenamePrefix::String, omega::Array{Float64,1},
 								waveCoef::Array{ComplexF64,1}, pad::Int64,ABLpad::Int64,offset::Int64,workerList::Array{Int64,1},maxBatchSize::Int64,
 								Ainv::AbstractSolver,useFilesForFields::Bool = false)
 ########################## m is in Velocity here. ###################################
@@ -64,7 +64,7 @@ attenuation = 0.01*4*pi;
 gamma .+= attenuation; # adding Attenuation.
 
 println("~~~~~~~ Getting data FWI: ~~~~~~~");
-	
+
 # Solve forward problem (should be relaced in reading data from file)
 
 batch = min(size(Q,2),maxBatchSize);
@@ -76,7 +76,7 @@ nsrc = size(Q,2);
 nrcv = size(P,2);
 
 for k = 1:length(omega)
-	I = contDiv[k] : contDiv[k+1] - 1 
+	I = contDiv[k] : contDiv[k+1] - 1
 	Dobsk = Array{Array{ComplexF64,2}}(undef,length(I));
 	for i = 1:length(I)
 		Dobsk[i] = fetch(D[I[i]]);
@@ -105,7 +105,7 @@ end
 # SRCfile = string(filenamePrefix,"_srcMap.dat");
 # writeSrcRcvLocFile(SRCfile,Minv,ABLpad,jump);
 # writeSrcRcvLocFile(RCVfile,Minv,ABLpad,1);
-	
+
 # dataFullFilenamePrefix = string(filenamePrefix,"_freq");
 # DobsTimeNoisy,gamma,rickt,waveCoef,Mask,zeroTimeOffset,rickerWidth = prepareFWIDataFilesFromTime(m,Minv,filenamePrefix,dataFullFilenamePrefix,omega,pad,ABLpad,offset,workerList,T,dt,fm,sigmaNoise);
 
@@ -141,12 +141,12 @@ end
 # write(file,"zeroTimeOffset",zeroTimeOffset);
 # write(file,"rickerWidth",rickerWidth)
 # close(file);
-# return DobsTimeNoisy		
+# return DobsTimeNoisy
 # end
 
 
 
-# function prepareFWIDataFilesFromTime(m, Minv::RegularMesh, filenamePrefix::String,dataFullFilenamePrefix::String, omega::Array{Float64,1}, 
+# function prepareFWIDataFilesFromTime(m, Minv::RegularMesh, filenamePrefix::String,dataFullFilenamePrefix::String, omega::Array{Float64,1},
 									# pad::Int64,ABLpad::Int64,offset::Int64,workerList::Array{Int64,1},T::Float64,dt::Float64,fm::Float64,sigmaNoise)
 # ########################## m is in Velocity here. ###################################
 # println("maxOmega*maxKappaSq*h: should be below 0.6");
@@ -274,9 +274,3 @@ end
 
 # return (Dobs,Wd)
 # end
-
-
-
-
-
-

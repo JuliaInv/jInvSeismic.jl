@@ -59,7 +59,7 @@ return pMisRF;
 end
 
 
-export getWd 
+export getWd
 function getWd(pMis::Array{RemoteChannel})
 Wd = Array{Array{ComplexF64}}(undef,length(pMis))
 @sync begin
@@ -69,7 +69,7 @@ Wd = Array{Array{ComplexF64}}(undef,length(pMis))
 		end
 	end
 end
-return pMis;
+return Wd;
 end
 
 function getWd(pMisRF::RemoteChannel)
@@ -87,13 +87,10 @@ Dobs = Array{Array{ComplexF64}}(undef,length(pMis))
 		end
 	end
 end
-return pMis;
+return Dobs;
 end
 
 function getDobs(pMisRF::RemoteChannel)
 pMis  = fetch(pMisRF)
 return pMis.dobs;
 end
-
-
-

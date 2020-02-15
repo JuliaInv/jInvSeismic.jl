@@ -25,7 +25,7 @@ NumWorkers = 1;
 	using jInv.Utils
 	using DelimitedFiles
 	using jInv.ForwardShare
-	using KrylovMethods	
+	using KrylovMethods
 end
 
 plotting = true;
@@ -58,7 +58,7 @@ newSize = [300,100];
 
 offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
 println("Offset is: ",offset," cells.")
-(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 # omega = [2.0,2.5,3.5,4.5,6.0]*2*pi;
 omega = [2.0,2.5,3.0]*2*pi;
 maxBatchSize = 256;
@@ -80,8 +80,8 @@ Ainv  = getParallelJuliaSolver(ComplexF64,Int64,numCores=4,backend=3);
 
 workersFWI = workers();
 println(string("The workers that we allocate for FWI are:",workersFWI));
-# prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)), 
-									# pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+# prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
+# 									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 ########################################################################################################################
@@ -102,17 +102,17 @@ for k = 1:length(omega)
 	(Dk,Wk) =  readDataFileToDataMat(string(dataFilenamePrefix,"_freq",omRound,".dat"),srcNodeMap,rcvNodeMap);
 	DobsFD[k] = Dk;
 	WdFD[k] = Wk;
-end   
+end
 
 
 
 ########################################################################################################################
 ########################################################################################################################
 ########################################################################################################################
-   
-(Q,P,pMis,SourcesSubInd,contDiv,Iact,sback,mref,boundsHigh,boundsLow) = 
+
+(Q,P,pMis,SourcesSubInd,contDiv,Iact,sback,mref,boundsHigh,boundsLow) =
 	setupFWI(m,dataFilenamePrefix,plotting,workersFWI,maxBatchSize,Ainv,SSDFun,useFilesForFields);
-   
+
 ########################################################################################################
 # Setting up the inversion for slowness instead of velocity:
 ########################################################################################################
@@ -155,8 +155,8 @@ regfun(m,mref,M) 	= wFourthOrderSmoothing(m,mref,M,Iact=Iact,C=[]);
 if dim==2
 	HesPrec=getExactSolveRegularizationPreconditioner();
 else
-	HesPrec = getSSORCGFourthOrderRegularizationPreconditioner(regparams,Minv,Iact,1.0,1e-8,1000);	
-end 
+	HesPrec = getSSORCGFourthOrderRegularizationPreconditioner(regparams,Minv,Iact,1.0,1e-8,1000);
+end
 
 alpha 	= 1e+4;
 pcgTol 	= 1e-1;
@@ -166,7 +166,7 @@ cgit 	= 5;
 pInv = getInverseParam(Minv,modfun,regfun,alpha,mref[:],boundsLow,boundsHigh,
                          maxStep=maxStep,pcgMaxIter=cgit,pcgTol=pcgTol,
 						 minUpdate=1e-3, maxIter = maxit,HesPrec=HesPrec);
-mc = copy(mref[:]);					 
+mc = copy(mref[:]);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",1,0,GN);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
@@ -183,8 +183,5 @@ pInv.maxIter = 1;
 
 
 mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 3,resultsFilename,dump,"",1,0,GN);
-# mc, = freqContExtendedSources(mc,Z1,Z2,Q,SourcesSubInd, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
-# mc, = freqContExtendedSources(mc,,Z1,Z2,Q,SourcesSubInd, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
-
-
-
+mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
+mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);

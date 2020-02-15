@@ -199,4 +199,5 @@ include("FourthOrderHesPrec.jl")
 include("freqCont.jl")
 include("timeDomainFWI.jl")
 include("firstArivalPicking.jl")
+include("computeHinvTRec.jl")
 end
