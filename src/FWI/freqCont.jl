@@ -245,11 +245,11 @@ for freqIdx = startFrom:(length(contDiv)-1)
 
 			Z2 = calculateZ2(misfitCalc2, p, nsrc, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd, mergedRc, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
 
-			println("misfit after Z2 update:: ", misfitCalc2(Z1,Z2,mergedWd,mergedDobs,numOfCurrentProblems,alpha1,alpha2, HinvPs))
+			println("misfit after Z2 update:: ", misfitCalc2(Z1,Z2,mergedWd,mergedRc,numOfCurrentProblems,alpha1,alpha2, HinvPs))
 
 			Z1 = calculateZ1(misfitCalc2, nfreq, mergedWd, mergedRc, HinvPs, Z1, Z2, alpha1, stepReg);
 
-			println("misfit after Z1 update:: ", misfitCalc2(Z1,Z2,mergedWd,mergedDobs,numOfCurrentProblems,alpha1,alpha2, HinvPs))
+			println("misfit after Z1 update:: ", misfitCalc2(Z1,Z2,mergedWd,mergedRc,numOfCurrentProblems,alpha1,alpha2, HinvPs))
 		end
 
 		# Update the pMis with new sources
