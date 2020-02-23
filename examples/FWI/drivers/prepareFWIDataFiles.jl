@@ -87,7 +87,7 @@ for k = 1:length(omega)
 	# Wd_k = (1.0./(abs.(real.(Dobsk)).+0.1*mean(abs.(Dobsk)))) + 1im*(1.0./(abs.(imag.(Dobsk)).+0.1*mean(abs.(Dobsk))));
 	# Wd_k = (1.0./(0.0*abs(real(Dobsk)).+1.0*mean(abs(Dobsk)))) .+ 1im*(1.0./(0.0*abs(imag(Dobsk)).+1.0*mean(abs(Dobsk))));
 	Wd_k = (ones(size(Dobsk))./mean(abs.(Dobsk))).*(1+1im);
-	Wd_k = limitDataToOffset(Wd_k,srcNodeMap,rcvNodeMap,offset);
+	# Wd_k = limitDataToOffset(Wd_k,srcNodeMap,rcvNodeMap,offset);
 	filename = string(dataFullFilenamePrefix,omRound,".dat");
 	writeDataFile(filename,Dobsk,Wd_k,srcNodeMap,rcvNodeMap);
 end

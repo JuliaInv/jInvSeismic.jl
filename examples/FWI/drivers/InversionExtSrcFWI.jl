@@ -1,4 +1,4 @@
-
+using Revise
 using Distributed
 using DelimitedFiles
 using MAT
@@ -58,7 +58,7 @@ newSize = [300,100];
 
 offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
 println("Offset is: ",offset," cells.")
-(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 # omega = [2.0,2.5,3.5,4.5,6.0]*2*pi;
 omega = [2.0,2.5,3.0]*2*pi;
 maxBatchSize = 256;
@@ -81,7 +81,7 @@ Ainv  = getParallelJuliaSolver(ComplexF64,Int64,numCores=4,backend=3);
 workersFWI = workers();
 println(string("The workers that we allocate for FWI are:",workersFWI));
 # prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
-# 									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+ 									# pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 ########################################################################################################################
@@ -171,11 +171,11 @@ mc = copy(mref[:]);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
 
-p = 10;
+p = 20;
 N_nodes = prod(Minv.n.+1);
 nsrc = size(Q,2);
-Z1 = rand(ComplexF64,(N_nodes, p)) .+ 0.01;
-Z2 = rand(ComplexF64, (p, nsrc)) .+ 0.01;
+Z1 = 1e-4*rand(ComplexF64,(N_nodes, p));
+Z2 = zeros(ComplexF64, (p, nsrc)); #0.01*rand(ComplexF64, (p, nsrc)) .+ 0.01;
 pInv.maxIter = 1;
 
 # function freqContExtendedSources(mc,Z1,Z2,originalSources::SparseMatrixCSC,nrec, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
