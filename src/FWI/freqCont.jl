@@ -109,6 +109,27 @@ function calculateZ2(misfitCalc::Function, p::Integer, nsrc::Integer, nfreq::Int
 	return lhs\rhs;
 end
 
+
+function MyCG(A::Function,b::Array,x::Array,numiter)
+r = b-A(x);
+p = copy(r);
+norms = [norm(r)];
+for k=1:numiter
+	Ap = A(p);
+	alpha = real(dot(r,r)/dot(p,Ap));
+	x .+= alpha*p;
+	beta = real(dot(r,r));
+	r .-= alpha*Ap
+	nn = norm(b-A(x));
+	norms = [norms; nn];
+	beta = real(dot(r,r)) / beta;
+	#beta = 0.0;
+	p = r + beta*p;
+end
+return x,norms
+end
+
+
 function misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2,HinvPs)
 	## HERE WE  NEED TO MAKE SURE THAT Wd is equal in its real and imaginary parts.
 	sum = 0.0;
@@ -116,9 +137,15 @@ function misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2,HinvPs)
 		res, = SSDFun((HinvPs[i]' * Z1) * Z2,mergedRc[i],mergedWd[i] .* ones(size(mergedRc[i])));
 		sum += res;
 	end
-	# sum	+= alpha1 * norm(Z1)^2 + alpha2 * norm(Z2)^2;
 	return sum;
 end
+
+
+function objectiveCalc2(Z1,Z2,misfit,alpha1,alpha2)
+	return misfit + 0.5*alpha1 * norm(Z1)^2 + 0.5*alpha2 * norm(Z2)^2;
+end
+
+
 
 function MultOp(HPinv, R, Z2)
 	return HPinv' * R * Z2
@@ -144,8 +171,7 @@ function calculateZ1(misfitCalc::Function, nfreq::Integer, mergedWd::Array, merg
 	end
 	rhs .+= (stepReg) .* Z1
 	OP = x-> MultAll(mean.(real.(mergedWd)), HinvPs, x, Z2, alpha1, stepReg);
-	# Z1 = KrylovMethods.blockBiCGSTB(x-> MultAll(mean.(real.(mergedWd)), HinvPs, x, Z2, alpha1, stepReg), rhs,x=copy(Z1),maxIter=50, out=1)[1];
-	Z1 = KrylovMethods.blockFGMRES(OP, rhs,20,X=copy(Z1),maxIter=10, out=1,tol=1e-7)[1];
+	Z1, = MyCG(OP,rhs,Z1,5);
 	return Z1;
 end
 
@@ -163,7 +189,7 @@ nsrc = size(originalSources, 2);
 
 alpha1 = 1e2;
 alpha2 = 1e2;
-stepReg = 1e2;#4e+3
+stepReg = 0.0; #1e2;#4e+3
 
 println("FreqCont: Regs are: ",alpha1,",",stepReg);
 
@@ -244,19 +270,24 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		end
 		# iterations of alternating minimization between Z1 and Z2
 		println("Misfit with Zero Z2: ", misfitCalc2(zeros(ComplexF64, (N_nodes, p)),zeros(ComplexF64, (p, nsrc)),mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs))
-
+		mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);	
+		obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
+		println("At Start: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 		pMisTempFetched = map(fetch, pMisTemp)
 		for iters = 1:10
 			#Print misfit at start
-			println("---------- AT START: ", misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs), " norm Z2 = ", alpha2*norm(Z2)^2," norm Z1: ", alpha1*norm(Z1)^2)
-
+			println("============================== New Z1-Z2 Iter ======================================");			
 			Z2 = calculateZ2(misfitCalc2, p, nsrc, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd, mergedRc, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
-
-			println("misfit after Z2 update:: ", misfitCalc2(Z1,Z2,mergedWd,mergedRc,numOfCurrentProblems,alpha1,alpha2, HinvPs), " norm Z2 = ", alpha2*norm(Z2)^2," norm Z1: ", alpha1*norm(Z1)^2)
+			print("After Z2:");
+			mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);	
+			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
+			println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 
 			Z1 = calculateZ1(misfitCalc2, nfreq, mergedWd, mergedRc, HinvPs, Z1, Z2, alpha1, stepReg);
-
-			println("misfit after Z1 update:: ", misfitCalc2(Z1,Z2,mergedWd,mergedRc,numOfCurrentProblems,alpha1,alpha2, HinvPs), " norm Z2 = ", alpha2*norm(Z2)^2," norm Z1: ", alpha1*norm(Z1)^2)
+			print("After Z1:");
+			mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);	
+			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
+			println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 		end
 		# Update the pMis with new sources
 		newSrc = Z1*Z2
@@ -292,6 +323,8 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		elseif method == "barrierGN"
 			mc,Dc,flag,His = barrierGNCG(mc,pInv,pMisTemp,rho=1.0,dumpResults = dumpGN);
 		end
+		
+		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);
 
 		if hisMatFileName != ""
 			file = matopen(string(hisMatFileName,"_HisGN.mat"), "w");

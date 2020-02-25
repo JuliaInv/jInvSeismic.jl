@@ -171,7 +171,7 @@ mc = copy(mref[:]);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
 
-p = 20;
+p = 5;
 N_nodes = prod(Minv.n.+1);
 nsrc = size(Q,2);
 Z1 = 1e-4*rand(ComplexF64,(N_nodes, p));
