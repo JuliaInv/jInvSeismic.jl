@@ -101,8 +101,9 @@ function calculateZ2(misfitCalc::Function, p::Integer, nsrc::Integer, nfreq::Int
 	rhs = zeros(ComplexF64, (p, nsrc));
 	lhs = zeros(ComplexF64, (p,p));
 	for i = 1:nfreq
-		lhs .+= (real(mergedWd[i]).^2) .* Z1' * HinvPs[i] * HinvPs[i]' * Z1;
-		rhs .+= (real(mergedWd[i]).^2) .* Z1' * HinvPs[i] * (mergedRc[i]);
+		meanWd = mean(mergedWd[i])
+		lhs .+= (real(meanWd).^2) .* Z1' * HinvPs[i] * HinvPs[i]' * Z1;
+		rhs .+= (real(meanWd).^2) .* Z1' * HinvPs[i] * (mergedRc[i]);
 	end
 	lhs += alpha * I;
 
@@ -142,7 +143,8 @@ end
 
 
 function objectiveCalc2(Z1,Z2,misfit,alpha1,alpha2)
-	return misfit + 0.5*alpha1 * norm(Z1)^2 + 0.5*alpha2 * norm(Z2)^2;
+	# return misfit + 0.5*alpha1 * norm(Z1)^2 + 0.5*alpha2 * norm(Z2)^2;
+	return misfit + alpha1 * norm(Z1, 1) + 0.5*alpha2 * norm(Z2)^2;
 end
 
 
@@ -155,22 +157,25 @@ function MultOpT(HPinv, R, Z2)
 	return HPinv * R * Z2'
 end
 
-function MultAll(avgWds, HPinvs, R, Z2, alpha, stepReg)
+function MultAll(avgWds, HPinvs, R, Z1, Z2, alpha, stepReg)
 	sum = zeros(ComplexF64, size(R))
 	for i = 1:length(avgWds)
 		sum += MultOpT(HPinvs[i], (avgWds[i]^2) .* MultOp(HPinvs[i], R, Z2), Z2)
 	end
-	return sum + (alpha+stepReg)*R;
+	eps = 1e-10
+	return sum + (alpha./(abs.(Z1) .+ eps * norm(Z1))).*R + stepReg*R;
+
+	# return sum + (alpha + stepReg)*R;
 end
 
 function calculateZ1(misfitCalc::Function, nfreq::Integer, mergedWd::Array, mergedRc::Array, HinvPs::Array, Z1::Matrix,Z2::Matrix, alpha1::Float64,stepReg::Float64)
 	## HERE WE  NEED TO MAKE SURE THAT Wd is equal in its real and imaginary parts.
 	rhs = zeros(ComplexF64, size(Z1));
 	for i = 1:nfreq
-		rhs .+= (real(mergedWd[i]).^2) .*  MultOpT(HinvPs[i], mergedRc[i], Z2);
+		rhs .+= (real(mean(mergedWd[i])).^2) .*  MultOpT(HinvPs[i], mergedRc[i], Z2);
 	end
 	rhs .+= (stepReg) .* Z1
-	OP = x-> MultAll(mean.(real.(mergedWd)), HinvPs, x, Z2, alpha1, stepReg);
+	OP = x-> MultAll(mean.(real.(mergedWd)), HinvPs, x, Z1, Z2, alpha1, stepReg);
 	Z1, = MyCG(OP,rhs,Z1,5);
 	return Z1;
 end
@@ -187,8 +192,8 @@ println("START EX")
 N_nodes = prod(pInv.MInv.n .+ 1);
 nsrc = size(originalSources, 2);
 
-alpha1 = 1e2;
-alpha2 = 1e2;
+alpha1 = 1e-1;
+alpha2 = 1e-1;
 stepReg = 0.0; #1e2;#4e+3
 
 println("FreqCont: Regs are: ",alpha1,",",stepReg);
@@ -227,15 +232,16 @@ for freqIdx = startFrom:(length(contDiv)-1)
 	nfreq = div(length(pMisTemp),nwork);
 
 	mergedDobs = Array{Array{ComplexF64}}(undef,nfreq);
-	#mergedWd = Array{Array{ComplexF64}}(undef,nfreq);
-	mergedWd = zeros(ComplexF64,nfreq)
+	mergedWd = Array{Array{ComplexF64}}(undef,nfreq);
+	# mergedWd = zeros(ComplexF64,nfreq)
 	for f = 1:nfreq
 		mergedDobs[f] = zeros(nrcv,nsrc);
-		#mergedWd[f] = zeros(nrcv,nsrc);
+		mergedWd[f] = zeros(nrcv,nsrc);
+
 		for l = 1:nwork
-			mergedDobs[f][:, currentSrcInd[l]] .= currentDobs[f*(nwork-1)+l]
-			# mergedWd[f][:, currentSrcInd[l]] = currentWd[f*(nwork-1)+l]
-			mergedWd[f] = mean(currentWd[f*(nwork-1)+l]);
+			mergedDobs[f][:, currentSrcInd[l]] .= currentDobs[(f-1)*nwork+l]
+			mergedWd[f][:, currentSrcInd[l]] = currentWd[(f-1)*nwork+l]
+			# mergedWd[f] = mean(currentWd[f*(nwork-1)+l]);
 			# println(mergedWd[f],",",currentWd[f*(nwork-1)+l][20,1])
 			# println(size(currentWd[f*(nwork-1)+l]))
 		end
@@ -245,7 +251,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		OrininalSourcesDivided[k] = originalSources[:,currentSrcInd[k]];
 	end
 
-	for j = 1:5
+	for j = 1:10
 		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);
 		# Here we get the current data with clean sources. Also define Ainv (which should be defined already but never mind...).
 		# t1 = time_ns();
@@ -264,28 +270,28 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		for f = 1:nfreq
 			mergedRc[f] = zeros(ComplexF64,nrcv,nsrc);
 			for l = 1:nwork
-				mergedRc[f][:, currentSrcInd[l]] .-= fetch(Dc[f*(nwork-1)+l])
+				mergedRc[f][:, currentSrcInd[l]] .-= fetch(Dc[(f-1)*nwork+l])
 			end
 			mergedRc[f] .+= mergedDobs[f];
 		end
 		# iterations of alternating minimization between Z1 and Z2
 		println("Misfit with Zero Z2: ", misfitCalc2(zeros(ComplexF64, (N_nodes, p)),zeros(ComplexF64, (p, nsrc)),mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs))
-		mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);	
+		mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);
 		obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 		println("At Start: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 		pMisTempFetched = map(fetch, pMisTemp)
 		for iters = 1:10
 			#Print misfit at start
-			println("============================== New Z1-Z2 Iter ======================================");			
+			println("============================== New Z1-Z2 Iter ======================================");
 			Z2 = calculateZ2(misfitCalc2, p, nsrc, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd, mergedRc, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
 			print("After Z2:");
-			mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);	
+			mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);
 			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 			println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 
 			Z1 = calculateZ1(misfitCalc2, nfreq, mergedWd, mergedRc, HinvPs, Z1, Z2, alpha1, stepReg);
 			print("After Z1:");
-			mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);	
+			mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);
 			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 			println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 		end
@@ -323,7 +329,14 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		elseif method == "barrierGN"
 			mc,Dc,flag,His = barrierGNCG(mc,pInv,pMisTemp,rho=1.0,dumpResults = dumpGN);
 		end
-		
+
+		Dc,FafterGN, = computeMisfit(mc,pMisTemp,false);
+
+		misfitReductionRatio = 0.5 * (FafterGN / F);
+		println("GN misfit reduction ratio : ",misfitReductionRatio);
+
+		alpha1 *= misfitReductionRatio
+		alpha2 *= misfitReductionRatio
 		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);
 
 		if hisMatFileName != ""

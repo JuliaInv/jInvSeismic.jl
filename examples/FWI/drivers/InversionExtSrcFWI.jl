@@ -59,7 +59,7 @@ newSize = [300,100];
 offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
 println("Offset is: ",offset," cells.")
 (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
-# omega = [2.0,2.5,3.5,4.5,6.0]*2*pi;
+# omega = [2.0,2.5,3.0,4.5,6.0]*2*pi;
 omega = [2.0,2.5,3.0]*2*pi;
 maxBatchSize = 256;
 useFilesForFields = false;
@@ -81,7 +81,7 @@ Ainv  = getParallelJuliaSolver(ComplexF64,Int64,numCores=4,backend=3);
 workersFWI = workers();
 println(string("The workers that we allocate for FWI are:",workersFWI));
 # prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
- 									# pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+#  									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 ########################################################################################################################
@@ -113,6 +113,8 @@ end
 (Q,P,pMis,SourcesSubInd,contDiv,Iact,sback,mref,boundsHigh,boundsLow) =
 	setupFWI(m,dataFilenamePrefix,plotting,workersFWI,maxBatchSize,Ainv,SSDFun,useFilesForFields);
 
+figure(1,figsize = (22,10));
+plotModel(m,includeMeshInfo=false,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="orig");
 ########################################################################################################
 # Setting up the inversion for slowness instead of velocity:
 ########################################################################################################
@@ -182,6 +184,6 @@ pInv.maxIter = 1;
 			# resultsFilename::String,dumpFun::Function,mode::String="",startFrom::Int64 = 1,cycle::Int64=0,method::String="projGN")
 
 
-mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 3,resultsFilename,dump,"",1,0,GN);
+mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 3,resultsFilename,dump,"",2,0,GN);
 mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
 mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
