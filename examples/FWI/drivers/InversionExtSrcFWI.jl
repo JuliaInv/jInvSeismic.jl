@@ -59,7 +59,7 @@ newSize = [300,100];
 offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
 println("Offset is: ",offset," cells.")
 (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
-# omega = [2.0,2.5,3.0,4.5,6.0]*2*pi;
+# omega = [2.0,2.5,3.5,4.5,6.0]*2*pi;
 omega = [2.0,2.5,3.0]*2*pi;
 maxBatchSize = 256;
 useFilesForFields = false;

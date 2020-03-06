@@ -162,7 +162,7 @@ function MultAll(avgWds, HPinvs, R, Z1, Z2, alpha, stepReg)
 	for i = 1:length(avgWds)
 		sum += MultOpT(HPinvs[i], (avgWds[i]^2) .* MultOp(HPinvs[i], R, Z2), Z2)
 	end
-	eps = 1e-10
+	eps = 1e-5
 	return sum + (alpha./(abs.(Z1) .+ eps * norm(Z1))).*R + stepReg*R;
 
 	# return sum + (alpha + stepReg)*R;
@@ -224,7 +224,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 	println("\n======= New Continuation Stage: selecting continuation batches: ",reqIdx1," to ",reqIdx2,"=======\n");
 
 	currentSrcInd = sourcesSubInd[currentProblems]
-	pInv.mref = mc[:];
+	# pInv.mref = mc[:];
 	# iterations of minize Z1,Z2 and then one gauss newton step
 
 	currentWd = getWd(pMisTemp);
@@ -304,7 +304,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		pMisTemp = setSources(pMisTemp,NewSourcesDivided);
 		Dc,F, = computeMisfit(mc,pMisTemp,false);
 		println("Computed Misfit with new sources : ",F);
-		
+
 		if resultsFilename == ""
 			filename = "";
 			hisMatFileName = "";
@@ -337,6 +337,8 @@ for freqIdx = startFrom:(length(contDiv)-1)
 
 		alpha1 *= misfitReductionRatio
 		alpha2 *= misfitReductionRatio
+		pInv.alpha = pInv.alpha ./ 2;
+
 		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);
 
 		if hisMatFileName != ""
