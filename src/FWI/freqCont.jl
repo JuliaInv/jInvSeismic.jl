@@ -192,16 +192,14 @@ println("START EX")
 N_nodes = prod(pInv.MInv.n .+ 1);
 nsrc = size(originalSources, 2);
 
-alpha1 = 1e-1;
-alpha2 = 1e-1;
-stepReg = 0.0; #1e2;#4e+3
+alpha1 = 5e-3;
+alpha2 = 8e0;
+stepReg = 1e2; #1e2;#4e+3
 
 println("FreqCont: Regs are: ",alpha1,",",stepReg);
 
 p = size(Z1,2);
 nwork = nworkers()
-
-
 
 for freqIdx = startFrom:(length(contDiv)-1)
 
@@ -252,6 +250,8 @@ for freqIdx = startFrom:(length(contDiv)-1)
 	end
 
 	for j = 1:10
+		Z1 = 1e-4*rand(ComplexF64,(N_nodes, p));
+		Z2 = 1e-4*rand(ComplexF64,(p, nsrc));
 		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);
 		# Here we get the current data with clean sources. Also define Ainv (which should be defined already but never mind...).
 		# t1 = time_ns();
@@ -280,21 +280,26 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 		println("At Start: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 		pMisTempFetched = map(fetch, pMisTemp)
-		for iters = 1:10
+		for iters = 1:5
 			#Print misfit at start
 			println("============================== New Z1-Z2 Iter ======================================");
-			Z2 = calculateZ2(misfitCalc2, p, nsrc, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd, mergedRc, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
-			print("After Z2:");
-			mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);
-			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
-			println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
+
 
 			Z1 = calculateZ1(misfitCalc2, nfreq, mergedWd, mergedRc, HinvPs, Z1, Z2, alpha1, stepReg);
 			print("After Z1:");
 			mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);
 			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 			println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
+
+			Z2 = calculateZ2(misfitCalc2, p, nsrc, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd, mergedRc, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
+			print("After Z2:");
+			mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);
+			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
+			println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
+
 		end
+		save("zs.jld","z1",Z1,"z2",Z2);
+		# throw("A")
 		# Update the pMis with new sources
 		newSrc = Z1*Z2
 		NewSourcesDivided = Array{SparseMatrixCSC}(undef,length(currentSrcInd));
@@ -331,13 +336,14 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		end
 
 		Dc,FafterGN, = computeMisfit(mc,pMisTemp,false);
+		println("Computed Misfit with new sources after GN : ",FafterGN);
 
-		misfitReductionRatio = 0.5 * (FafterGN / F);
+		misfitReductionRatio = 0.1 * (FafterGN / F);
 		println("GN misfit reduction ratio : ",misfitReductionRatio);
 
 		alpha1 *= misfitReductionRatio
-		alpha2 *= misfitReductionRatio
-		pInv.alpha = pInv.alpha ./ 2;
+		# alpha2 *= misfitReductionRatio
+		pInv.alpha = pInv.alpha ./ 10;
 
 		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);
 

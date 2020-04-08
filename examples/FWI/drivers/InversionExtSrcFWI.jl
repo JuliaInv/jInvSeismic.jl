@@ -58,7 +58,7 @@ newSize = [300,100];
 
 offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
 println("Offset is: ",offset," cells.")
-(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 # omega = [2.0,2.5,3.5,4.5,6.0]*2*pi;
 omega = [2.0,2.5,3.0]*2*pi;
 maxBatchSize = 256;
@@ -80,8 +80,8 @@ Ainv  = getParallelJuliaSolver(ComplexF64,Int64,numCores=4,backend=3);
 
 workersFWI = workers();
 println(string("The workers that we allocate for FWI are:",workersFWI));
-# prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
-#  									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
+ 									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 ########################################################################################################################
@@ -173,7 +173,7 @@ mc = copy(mref[:]);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
 
-p = 5;
+p = 50;
 N_nodes = prod(Minv.n.+1);
 nsrc = size(Q,2);
 Z1 = 1e-4*rand(ComplexF64,(N_nodes, p));
@@ -185,5 +185,9 @@ pInv.maxIter = 1;
 
 
 mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 3,resultsFilename,dump,"",2,0,GN);
+
+regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
+pInv.regularizer = regfun;
+
 mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
 mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
