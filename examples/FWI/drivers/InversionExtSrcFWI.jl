@@ -184,10 +184,10 @@ pInv.maxIter = 1;
 			# resultsFilename::String,dumpFun::Function,mode::String="",startFrom::Int64 = 1,cycle::Int64=0,method::String="projGN")
 
 
-mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 3,resultsFilename,dump,"",2,0,GN);
+mc, = freqContExtendedSources(mc,Z1,Z2,7,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,"",2,0,GN);
+mc, = freqContExtendedSources(mc,Z1,Z2,7,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,"",3,1,GN);
 
 regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
 pInv.regularizer = regfun;
 
-mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
-mc, = freqContExtendedSources(mc,Z1,Z2,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
+mc, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,"",3,2,GN);

@@ -181,7 +181,7 @@ function calculateZ1(misfitCalc::Function, nfreq::Integer, mergedWd::Array, merg
 end
 
 
-function freqContExtendedSources(mc,Z1,Z2,originalSources::SparseMatrixCSC,nrcv, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
+function freqContExtendedSources(mc,Z1,Z2,itersNum::Int64,originalSources::SparseMatrixCSC,nrcv, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
 			resultsFilename::String,dumpFun::Function,mode::String="",startFrom::Int64 = 1,cycle::Int64=0,method::String="projGN")
 Dc = 0;
 flag = -1;
@@ -249,7 +249,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		OrininalSourcesDivided[k] = originalSources[:,currentSrcInd[k]];
 	end
 
-	for j = 1:10
+	for j = 1:itersNum
 		Z1 = 1e-4*rand(ComplexF64,(N_nodes, p));
 		Z2 = 1e-4*rand(ComplexF64,(p, nsrc));
 		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);
@@ -298,7 +298,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 			println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 
 		end
-		save("zs.jld","z1",Z1,"z2",Z2);
+		save(string("zs_FC",freqIdx, "_cyc", cycle,"_",j,".jld"),"z1",Z1,"z2",Z2);
 		# throw("A")
 		# Update the pMis with new sources
 		newSrc = Z1*Z2
@@ -338,7 +338,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		Dc,FafterGN, = computeMisfit(mc,pMisTemp,false);
 		println("Computed Misfit with new sources after GN : ",FafterGN);
 
-		misfitReductionRatio = 0.1 * (FafterGN / F);
+		misfitReductionRatio = 0.05 * (FafterGN / F);
 		println("GN misfit reduction ratio : ",misfitReductionRatio);
 
 		alpha1 *= misfitReductionRatio

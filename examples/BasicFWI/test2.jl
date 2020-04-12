@@ -40,23 +40,26 @@ betaS = 1e1
 m=34
 n=67
 
+Z1abs = readdlm("zs_FC2_Cyc0_2.dat")
 
-Z1 = load("zs.jld", "z1")
-Z1abs = zeros(size(Z1,1), 1)
-for i = 1:size(Z1,1)
-	Z1abs[i] = norm(Z1[i,:])
+println(size(Z1abs))
 
-end
-Z2 = load("zs.jld", "z2")
-NS = Z1 * Z2;
-x = abs.(NS)
-minimum(x)
-maximum(x)
-median(x)
-a = x[x .< 1e-3]
+# Z1 = load("zs_FC3_2.jld", "z1")
+# Z1abs = zeros(size(Z1,1), 1)
+# for i = 1:size(Z1,1)
+# 	Z1abs[i] = norm(Z1[i,:])
+#
+# end
+# Z2 = load("zs_FC3_10.jld", "z2")
+# NS = Z1 * Z2;
+# x = abs.(NS)
+# minimum(x)
+# maximum(x)
+# median(x)
+# a = x[x .< 1e-3]
 
 figure();
-imshow(reshape(Z1abs, (331, 116))')
+imshow(reshape(Z1abs, (661, 331))')
 # imshow(reshape(x, (580,331))')
 colorbar();
 # wd = load("ext.jld", "wd")
