@@ -168,7 +168,7 @@ function MultAll(avgWds, HPinvs, R, Z1, Z2, alpha, stepReg)
 		@async begin
 			for k=1:length(avgWds)
 				partials[k] = remotecall_fetch(calculateForFreq,
-					(k + 1) % nworkers() + 1,HPinvs[k], avgWds[k], R, Z2);
+					k % nworkers() + 1,HPinvs[k], avgWds[k], R, Z2);
 			end
 		end
 	end
@@ -210,15 +210,19 @@ nsrc = size(originalSources, 2);
 
 alpha1 = 5e-3;
 alpha2 = 8e0;
-stepReg = 1e2; #1e2;#4e+3
+stepReg = 0.0; #1e2;#4e+3
 
 println("FreqCont: Regs are: ",alpha1,",",stepReg);
 
 p = size(Z1,2);
 nwork = nworkers()
-
+regfun = pInv.regularizer
 for freqIdx = startFrom:(length(contDiv)-1)
-
+	if freqIdx == (length(contDiv)-1)
+		pInv.mref = copy(mc[:]);
+		newReg(m,mref,M) 	= wTVReg(m,mref,M,Iact=Iact,C=[]);
+		pInv.regularizer = newReg;
+	end
 	if mode=="1stInit"
 		reqIdx1 = freqIdx;
 		if freqIdx > 1
@@ -267,7 +271,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 
 	for j = 1:itersNum
 		Z1 = 1e-4*rand(ComplexF64,(N_nodes, p));
-		Z2 = 1e-4*rand(ComplexF64,(p, nsrc));
+		Z2 = rand(ComplexF64,(p, nsrc));
 		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);
 		# Here we get the current data with clean sources. Also define Ainv (which should be defined already but never mind...).
 		# t1 = time_ns();
@@ -345,7 +349,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 			Z1abs[i] = norm(Z1[i,:])
 
 		end
-		writedlm(string("zs_FC",freqIdx, "_cyc", cycle,"_",j,".mat"),convert(Array{ComplexF16},Z1abs));
+		writedlm(string("zs_FC",freqIdx, "_cyc", cycle,"_",j,".mat"),convert(Array{Float16},Z1abs));
 		# throw("A")
 		# Update the pMis with new sources
 		newSrc = Z1*Z2
@@ -387,11 +391,11 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		elseif method == "barrierGN"
 			mc,Dc,flag,His = barrierGNCG(mc,pInv,pMisTemp,rho=1.0,dumpResults = dumpGN);
 		end
-
 		e1 = time_ns();
 		println("runtime of GN");
 		println((e1 - t1)/1.0e9);
 
+		mc = map(x -> x > 4.0 ? 4.5 : x, mc)
 
 		Dc,FafterGN, = computeMisfit(mc,pMisTemp,false);
 		println("Computed Misfit with new sources after GN : ",FafterGN);
@@ -400,7 +404,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		println("GN misfit reduction ratio : ",misfitReductionRatio);
 
 		alpha1 *= misfitReductionRatio
-		# alpha2 *= misfitReductionRatio
+		alpha2 *= 3 * misfitReductionRatio
 		pInv.alpha = pInv.alpha ./ 10;
 
 		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);
@@ -417,6 +421,8 @@ for freqIdx = startFrom:(length(contDiv)-1)
 	end
 
 end
+
+pInv.regularizer = regfun;
 return mc,Z1,Z2,Dc,flag,HIS;
 end
 

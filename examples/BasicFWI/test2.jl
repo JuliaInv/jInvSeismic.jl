@@ -2,6 +2,8 @@ using JLD
 using Statistics
 using KrylovMethods
 using jInvVis
+using DelimitedFiles
+
 using PyPlot
 # function calculateZ2(misfitCalc::Function, p::Integer, nsrc::Integer,
 # 	nrec::Integer, nwork::Integer,
@@ -40,9 +42,20 @@ betaS = 1e1
 m=34
 n=67
 
-Z1abs = readdlm("zs_FC2_Cyc0_2.dat")
+function extractNum(str)
+	return str[9:end-1]
+end
 
-println(size(Z1abs))
+Z1abs = readdlm("zs_FC3_cyc0_2.mat")
+signs = Z1abs[:,2]
+minuses = signs[signs .== "-"]
+b = zeros(size(Z1abs,1))
+extractNum(Z1abs[1, 1])
+for i=1:size(Z1abs,1)
+		# extractNum(Z1abs[i, 1])
+		b[i] =  parse(Float64, extractNum(Z1abs[i,1]))^2
+end
+println(size(b))
 
 # Z1 = load("zs_FC3_2.jld", "z1")
 # Z1abs = zeros(size(Z1,1), 1)
@@ -56,10 +69,12 @@ println(size(Z1abs))
 # minimum(x)
 # maximum(x)
 # median(x)
-# a = x[x .< 1e-3]
-
+maxZ1 = maximum(b)
+a = map(x -> x > 1e-2*maxZ1 ? x : 0, b)
+println(size(b[b .> 1e-2*maxZ1]))
+# for
 figure();
-imshow(reshape(Z1abs, (661, 331))')
+imshow(reshape(a, (661, 331))')
 # imshow(reshape(x, (580,331))')
 colorbar();
 # wd = load("ext.jld", "wd")
