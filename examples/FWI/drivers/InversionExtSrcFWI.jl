@@ -9,12 +9,12 @@ using jInvSeismic.Utils
 using Helmholtz
 using Statistics
 
-NumWorkers = 1;
-# if nworkers() == 1
-	# addprocs(NumWorkers);
-# elseif nworkers() < NumWorkers
-	# addprocs(NumWorkers - nworkers());
-# end
+NumWorkers = 2;
+if nworkers() == 1
+	addprocs(NumWorkers);
+elseif nworkers() < NumWorkers
+	addprocs(NumWorkers - nworkers());
+end
 
 @everywhere begin
 	using jInv.InverseSolve
@@ -173,7 +173,7 @@ mc = copy(mref[:]);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
 
-p = 50;
+p = 25;
 N_nodes = prod(Minv.n.+1);
 nsrc = size(Q,2);
 Z1 = 1e-4*rand(ComplexF64,(N_nodes, p));
@@ -183,11 +183,17 @@ pInv.maxIter = 1;
 # function freqContExtendedSources(mc,Z1,Z2,originalSources::SparseMatrixCSC,nrec, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
 			# resultsFilename::String,dumpFun::Function,mode::String="",startFrom::Int64 = 1,cycle::Int64=0,method::String="projGN")
 
+ts = time_ns();
 
-mc, = freqContExtendedSources(mc,Z1,Z2,7,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,"",2,0,GN);
-mc, = freqContExtendedSources(mc,Z1,Z2,7,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,"",3,1,GN);
+mc, = freqContExtendedSources(mc,Z1,Z2,7,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,"",2,0,GN);
+mc, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,"",3,1,GN);
 
 regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
 pInv.regularizer = regfun;
 
-mc, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,"",3,2,GN);
+mc, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,"",3,2,GN);
+
+te = time_ns();
+
+println("runtime of inversion");
+println((ts - te)/1.0e9);

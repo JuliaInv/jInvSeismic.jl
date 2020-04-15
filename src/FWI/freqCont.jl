@@ -150,20 +150,36 @@ end
 
 
 function MultOp(HPinv, R, Z2)
-	return HPinv' * R * Z2
+	return (HPinv' * R) * Z2
 end
 
 function MultOpT(HPinv, R, Z2)
-	return HPinv * R * Z2'
+	return HPinv * (R * Z2')
 end
 
 function MultAll(avgWds, HPinvs, R, Z1, Z2, alpha, stepReg)
-	sum = zeros(ComplexF64, size(R))
-	for i = 1:length(avgWds)
-		sum += MultOpT(HPinvs[i], (avgWds[i]^2) .* MultOp(HPinvs[i], R, Z2), Z2)
+	# sum = zeros(ComplexF64, size(R))
+
+	partials = Array{Array{ComplexF64}}(undef,length(avgWds))
+	function calculateForFreq(HPinv, avgWd, R, Z2)
+		return MultOpT(HPinv, (avgWd^2) .* MultOp(HPinv, R, Z2), Z2)
 	end
+	@sync begin
+		@async begin
+			for k=1:length(avgWds)
+				partials[k] = remotecall_fetch(calculateForFreq,
+					(k + 1) % nworkers() + 1,HPinvs[k], avgWds[k], R, Z2);
+			end
+		end
+	end
+
+	overallSum = sum(partials)
+
+	# for i = 1:length(avgWds)
+	# 	sum += MultOpT(HPinvs[i], (avgWds[i]^2) .* MultOp(HPinvs[i], R, Z2), Z2)
+	# end
 	eps = 1e-5
-	return sum + (alpha./(abs.(Z1) .+ eps * norm(Z1))).*R + stepReg*R;
+	return overallSum + (alpha./(abs.(Z1) .+ eps * norm(Z1))).*R + stepReg*R;
 
 	# return sum + (alpha + stepReg)*R;
 end
@@ -182,7 +198,7 @@ end
 
 
 function freqContExtendedSources(mc,Z1,Z2,itersNum::Int64,originalSources::SparseMatrixCSC,nrcv, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
-			resultsFilename::String,dumpFun::Function,mode::String="",startFrom::Int64 = 1,cycle::Int64=0,method::String="projGN")
+			resultsFilename::String,dumpFun::Function,Iact,mback,mode::String="",startFrom::Int64 = 1,cycle::Int64=0,method::String="projGN")
 Dc = 0;
 flag = -1;
 HIS = [];
@@ -260,11 +276,11 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		# println("runtime of misfit");
 		# println((e1 - t1)/1.0e9);
 		println("Computed Misfit with orig sources : ",F);
-		# t1 = time_ns();
+		t1 = time_ns();
 		HinvPs = computeHinvTRec(pMisTemp[1:nwork:numOfCurrentProblems]);
-		# e1 = time_ns();
-		# println("runtime of HINVPs");
-		# println((e1 - t1)/1.0e9);
+		e1 = time_ns();
+		println("runtime of HINVPs");
+		println((e1 - t1)/1.0e9);
 
 		mergedRc = Array{Array{ComplexF64}}(undef,nfreq); # Rc = Dc-Dobs, where Dc is the clean (wrt Z1,Z2) simulated data
 		for f = 1:nfreq
@@ -278,27 +294,58 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		println("Misfit with Zero Z2: ", misfitCalc2(zeros(ComplexF64, (N_nodes, p)),zeros(ComplexF64, (p, nsrc)),mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs))
 		mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);
 		obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
+		initialMis = mis
 		println("At Start: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 		pMisTempFetched = map(fetch, pMisTemp)
+		prevObj = 0
 		for iters = 1:5
 			#Print misfit at start
 			println("============================== New Z1-Z2 Iter ======================================");
 
 
+			t1 = time_ns();
 			Z1 = calculateZ1(misfitCalc2, nfreq, mergedWd, mergedRc, HinvPs, Z1, Z2, alpha1, stepReg);
+			e1 = time_ns();
+			println("runtime of Z1 calc");
+			println((e1 - t1)/1.0e9);
+
 			print("After Z1:");
 			mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);
 			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 			println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 
+
+			t1 = time_ns();
 			Z2 = calculateZ2(misfitCalc2, p, nsrc, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd, mergedRc, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
+			e1 = time_ns();
+			println("runtime of Z2 calc");
+			println((e1 - t1)/1.0e9);
+
+
 			print("After Z2:");
 			mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);
 			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 			println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 
+
+			if abs(obj - prevObj) < 1e-3
+				break
+			end
+
+			prevObj = obj
+			if mis < 0.5 * initialMis
+				break
+			end
+
+
 		end
-		save(string("zs_FC",freqIdx, "_cyc", cycle,"_",j,".jld"),"z1",Z1,"z2",Z2);
+		# save(string("zs_FC",freqIdx, "_cyc", cycle,"_",j,".jld"),"z1",Z1,"z2",Z2);
+		Z1abs = zeros(size(Z1,1), 1)
+		for i = 1:size(Z1,1)
+			Z1abs[i] = norm(Z1[i,:])
+
+		end
+		writedlm(string("zs_FC",freqIdx, "_cyc", cycle,"_",j,".mat"),convert(Array{ComplexF16},Z1abs));
 		# throw("A")
 		# Update the pMis with new sources
 		newSrc = Z1*Z2
@@ -329,16 +376,27 @@ for freqIdx = startFrom:(length(contDiv)-1)
 			dumpFun(mc,Dc,iter,pInv,PF,filename);
 		end
 
+		# pMisTE = calculateReducedMisfitParams(mc, currentProblems, pMisTemp, Iact, mback);
+		# pInv.mref = mc[:];
+
+
+		t1 = time_ns();
+
 		if method == "projGN"
 			mc,Dc,flag,His = projGNCG(mc,pInv,pMisTemp,dumpResults = dumpGN);
 		elseif method == "barrierGN"
 			mc,Dc,flag,His = barrierGNCG(mc,pInv,pMisTemp,rho=1.0,dumpResults = dumpGN);
 		end
 
+		e1 = time_ns();
+		println("runtime of GN");
+		println((e1 - t1)/1.0e9);
+
+
 		Dc,FafterGN, = computeMisfit(mc,pMisTemp,false);
 		println("Computed Misfit with new sources after GN : ",FafterGN);
 
-		misfitReductionRatio = 0.05 * (FafterGN / F);
+		misfitReductionRatio = 0.3 * (FafterGN / F);
 		println("GN misfit reduction ratio : ",misfitReductionRatio);
 
 		alpha1 *= misfitReductionRatio
@@ -360,4 +418,47 @@ for freqIdx = startFrom:(length(contDiv)-1)
 
 end
 return mc,Z1,Z2,Dc,flag,HIS;
+end
+
+"""
+	Function to calculate MistfitParams of new dimensions after trace estimation
+"""
+function calculateReducedMisfitParams(mc, currentProblems::UnitRange, pMis::Array{RemoteChannel},
+			Iact,mback)
+	numOfCurrentProblems = size(currentProblems, 1);
+
+	eta = 20.0;
+	newDim = 10;
+
+	runningProcs = map(x->x.where, pMis[currentProblems]);
+	pMisCurrent = map(fetch, pMis[currentProblems]);
+	pForpCurrent =  map(x->x.pFor, pMisCurrent);
+
+	DobsCurrent = map(x->x.dobs[:,:], pMisCurrent);
+	WdCurrent = map(x->x.Wd[:,:], pMisCurrent);
+	DobsNew = copy(DobsCurrent[:]);
+	nsrc = size(DobsNew[1],2);
+	TEmat = rand([-1,1],(nsrc,newDim));
+	WdEta = eta.*WdCurrent;
+	DpCurrent, = getData(vec(mc),pForpCurrent);
+	WdNew = Array{Array}(undef, numOfCurrentProblems);
+	for i=1:numOfCurrentProblems
+		DobsTemp = fetch(DpCurrent[i]);
+		for s=1:nsrc
+			etaM = 2 * eta .*diagm(0 => vec(WdCurrent[i][:,s])).*diagm(0 => vec(WdCurrent[i][:,s]));
+			A = (2 .*I + etaM)
+			b = (etaM)*(A\DobsCurrent[i][:,s])
+			DobsNew[i][:,s] = 2 .* (A\DobsTemp[:,s]) + b;
+		end
+		DobsNew[i] = DobsNew[i][:,:] * TEmat;
+		WdNew[i] = 1.0./(sqrt(newDim) .* abs.(real.(DobsNew[i])) .+ 1e-1*mean(abs.(DobsNew[i])));
+	end
+
+	pForReduced = Array{RemoteChannel}(undef, numOfCurrentProblems);
+	for i=1:numOfCurrentProblems
+		pForTemp = pForpCurrent[i];
+		pForTemp.Sources = pForTemp.originalSources * TEmat;
+		pForReduced[i] = initRemoteChannel(x->x, runningProcs[i], pForTemp);
+	end
+	return getMisfitParam(pForReduced, WdNew, DobsNew, SSDFun, Iact, mback);
 end
