@@ -5,7 +5,7 @@ function setupFWI(m,filenamePrefix::String,plotting::Bool,
 		workersFWI::Array{Int64,1}=workers(),maxBatchSize::Int64 = 48,
 		Ainv::AbstractSolver = getJuliaSolver(), misfun::Function=SSDFun,useFilesForFields::Bool = false)
 
-		
+
 file = matopen(string(filenamePrefix,"_PARAM.mat"));
 n_cells = read(file,"n");
 OmegaDomain = read(file,"domain");
@@ -20,6 +20,8 @@ end
 
 boundsLow = read(file,"boundsLow");
 boundsHigh = read(file,"boundsHigh");
+
+# mref =  readdlm("FWI_ExtSrc(660, 330)_Cyc1_FC5_10_GN1.dat");
 mref =  read(file,"mref");
 close(file);
 

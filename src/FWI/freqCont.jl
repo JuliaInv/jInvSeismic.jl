@@ -196,6 +196,27 @@ function calculateZ1(misfitCalc::Function, nfreq::Integer, mergedWd::Array, merg
 	return Z1;
 end
 
+function getMergedData(pMisTemp::Array{RemoteChannel}, nfreq, nsrc, nrcv, nwork, currentSrcInd)
+	currentWd = getWd(pMisTemp);
+	currentDobs = getDobs(pMisTemp);
+
+	mergedDobs = Array{Array{ComplexF64}}(undef,nfreq);
+	mergedWd = Array{Array{ComplexF64}}(undef,nfreq);
+	# mergedWd = zeros(ComplexF64,nfreq)
+	for f = 1:nfreq
+		mergedDobs[f] = zeros(nrcv,nsrc);
+		mergedWd[f] = zeros(nrcv,nsrc);
+
+		for l = 1:nwork
+			mergedDobs[f][:, currentSrcInd[l]] .= currentDobs[(f-1)*nwork+l]
+			mergedWd[f][:, currentSrcInd[l]] = currentWd[(f-1)*nwork+l]
+			# mergedWd[f] = mean(currentWd[f*(nwork-1)+l]);
+			# println(mergedWd[f],",",currentWd[f*(nwork-1)+l][20,1])
+			# println(size(currentWd[f*(nwork-1)+l]))
+		end
+	end
+	return mergedDobs, mergedWd
+end
 
 function freqContExtendedSources(mc,Z1,Z2,itersNum::Int64,originalSources::SparseMatrixCSC,nrcv, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
 			resultsFilename::String,dumpFun::Function,Iact,mback,mode::String="",startFrom::Int64 = 1,cycle::Int64=0,method::String="projGN")
@@ -244,26 +265,30 @@ for freqIdx = startFrom:(length(contDiv)-1)
 	currentSrcInd = sourcesSubInd[currentProblems]
 	# pInv.mref = mc[:];
 	# iterations of minize Z1,Z2 and then one gauss newton step
-
-	currentWd = getWd(pMisTemp);
-	currentDobs = getDobs(pMisTemp);
 	nfreq = div(length(pMisTemp),nwork);
 
-	mergedDobs = Array{Array{ComplexF64}}(undef,nfreq);
-	mergedWd = Array{Array{ComplexF64}}(undef,nfreq);
-	# mergedWd = zeros(ComplexF64,nfreq)
-	for f = 1:nfreq
-		mergedDobs[f] = zeros(nrcv,nsrc);
-		mergedWd[f] = zeros(nrcv,nsrc);
-
-		for l = 1:nwork
-			mergedDobs[f][:, currentSrcInd[l]] .= currentDobs[(f-1)*nwork+l]
-			mergedWd[f][:, currentSrcInd[l]] = currentWd[(f-1)*nwork+l]
-			# mergedWd[f] = mean(currentWd[f*(nwork-1)+l]);
-			# println(mergedWd[f],",",currentWd[f*(nwork-1)+l][20,1])
-			# println(size(currentWd[f*(nwork-1)+l]))
-		end
-	end
+	mergedDobs, mergedWd = getMergedData(pMisTemp, nfreq, nsrc, nrcv, nwork, currentSrcInd)
+	#
+	# currentWd = getWd(pMisTemp);
+	# currentDobs = getDobs(pMisTemp);
+	# nfreq = div(length(pMisTemp),nwork);
+	#
+	#
+	# mergedDobs = Array{Array{ComplexF64}}(undef,nfreq);
+	# mergedWd = Array{Array{ComplexF64}}(undef,nfreq);
+	# # mergedWd = zeros(ComplexF64,nfreq)
+	# for f = 1:nfreq
+	# 	mergedDobs[f] = zeros(nrcv,nsrc);
+	# 	mergedWd[f] = zeros(nrcv,nsrc);
+	#
+	# 	for l = 1:nwork
+	# 		mergedDobs[f][:, currentSrcInd[l]] .= currentDobs[(f-1)*nwork+l]
+	# 		mergedWd[f][:, currentSrcInd[l]] = currentWd[(f-1)*nwork+l]
+	# 		# mergedWd[f] = mean(currentWd[f*(nwork-1)+l]);
+	# 		# println(mergedWd[f],",",currentWd[f*(nwork-1)+l][20,1])
+	# 		# println(size(currentWd[f*(nwork-1)+l]))
+	# 	end
+	# end
 	OrininalSourcesDivided = Array{SparseMatrixCSC}(undef,length(currentSrcInd));
 	for k=1:length(currentSrcInd)
 		OrininalSourcesDivided[k] = originalSources[:,currentSrcInd[k]];
@@ -394,8 +419,9 @@ for freqIdx = startFrom:(length(contDiv)-1)
 			dumpFun(mc,Dc,iter,pInv,PF,filename);
 		end
 
-		# pMisTE = pMisTemp;
-		pMisTE = calculateReducedMisfitParams(mc, currentProblems, pMisTemp, Iact, mback, Dc, TEmat);
+		pMisTE = pMisTemp;
+		# pMisTE = calculateReducedMisfitParams(mc, currentProblems, pMisTemp, Iact, mback, TEmat, Dc, nfreq,
+		 # nsrc, nrcv, nwork, currentSrcInd);
 		# pInv.mref = mc[:];
 
 
@@ -445,18 +471,22 @@ end
 	Function to calculate MistfitParams of new dimensions after trace estimation
 """
 function calculateReducedMisfitParams(mc, currentProblems::UnitRange, pMis::Array{RemoteChannel},
-			Iact,mback, Dc, TEmat)
-	numOfCurrentProblems = size(currentProblems, 1);
+			Iact,mback, TEmat, Dc, nfreq, nsrc, nrcv, nwork, currentSrcInd)
+
+	### need to split the new sources to workers
+	numOfCurrentProblems = size(pMis, 1);
 	println("typeof Dc:", typeof(Dc))
 	eta = 20.0;
 	# newDim = 20;
 	newDim = size(TEmat, 2)
-	runningProcs = map(x->x.where, pMis[currentProblems]);
-	pMisCurrent = map(fetch, pMis[currentProblems]);
+	runningProcs = map(x->x.where, pMis);
+	pMisCurrent = map(fetch, pMis);
 	pForpCurrent =  map(x->x.pFor, pMisCurrent);
 
-	DobsCurrent = map(x->x.dobs[:,:], pMisCurrent);
-	WdCurrent = map(x->x.Wd[:,:], pMisCurrent);
+	# DobsCurrent = map(x->x.dobs[:,:], pMisCurrent);
+	# WdCurrent = map(x->x.Wd[:,:], pMisCurrent);
+
+	DobsCurrent, WdCurrent = getMergedData(pMis, nfreq, nsrc, nrcv, nwork, currentSrcInd)
 	DobsNew = copy(DobsCurrent[:]);
 	nsrc = size(DobsNew[1],2);
 	# TEmat = rand([-1,1],(nsrc,newDim));

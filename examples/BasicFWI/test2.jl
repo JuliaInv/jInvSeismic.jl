@@ -46,16 +46,23 @@ function extractNum(str)
 	return str[9:end-1]
 end
 
-Z1abs = readdlm("zs_FC3_cyc0_2.mat")
-signs = Z1abs[:,2]
-minuses = signs[signs .== "-"]
-b = zeros(size(Z1abs,1))
-extractNum(Z1abs[1, 1])
-for i=1:size(Z1abs,1)
+Z1abs = readdlm("FWI_ExtSrc(660, 330)_Cyc1_FC5_10_GN1.dat")
+println(size(Z1abs))
+figure();
+imshow(Z1abs')
+# imshow(reshape(x, (580,331))')
+colorbar();
+# Z1abs = readdlm("zs_FC5_cyc2_5.mat")
+println(norm(Z1abs))
+# signs = Z1abs[:,2]
+# minuses = signs[signs .== "-"]
+# b = zeros(size(Z1abs,1))
+# extractNum(Z1abs[1, 1])
+# for i=1:size(Z1abs,1)
 		# extractNum(Z1abs[i, 1])
-		b[i] =  parse(Float64, extractNum(Z1abs[i,1]))^2
-end
-println(size(b))
+		# b[i] =  parse(Float64, extractNum(Z1abs[i,1]))^2
+# end
+# println(size(b))
 
 # Z1 = load("zs_FC3_2.jld", "z1")
 # Z1abs = zeros(size(Z1,1), 1)
@@ -69,9 +76,10 @@ println(size(b))
 # minimum(x)
 # maximum(x)
 # median(x)
-maxZ1 = maximum(b)
-a = map(x -> x > 1e-2*maxZ1 ? x : 0, b)
-println(size(b[b .> 1e-2*maxZ1]))
+maxZ1 = maximum(Z1abs)
+println(maxZ1)
+a = map(x -> x > 5e-2*maxZ1 ? x : 0, Z1abs)
+println(size(Z1abs[Z1abs .> 5e-2*maxZ1]))
 # for
 figure();
 imshow(reshape(a, (661, 331))')
