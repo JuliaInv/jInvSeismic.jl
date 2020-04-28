@@ -191,8 +191,12 @@ function calculateZ1(misfitCalc::Function, nfreq::Integer, mergedWd::Array, merg
 		rhs .+= (real(mean(mergedWd[i])).^2) .*  MultOpT(HinvPs[i], mergedRc[i], Z2);
 	end
 	rhs .+= (stepReg) .* Z1
+
 	OP = x-> MultAll(mean.(real.(mergedWd)), HinvPs, x, Z1, Z2, alpha1, stepReg);
+	t1=time_ns()
 	Z1, = MyCG(OP,rhs,Z1,5);
+	e1=time_ns()
+	println("time CG Z1: ", (e1-t1)/1.0e9)
 	return Z1;
 end
 

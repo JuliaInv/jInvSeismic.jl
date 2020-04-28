@@ -9,12 +9,12 @@ using jInvSeismic.Utils
 using Helmholtz
 using Statistics
 
-NumWorkers = 2;
-if nworkers() == 1
-	addprocs(NumWorkers);
-elseif nworkers() < NumWorkers
-	addprocs(NumWorkers - nworkers());
-end
+NumWorkers = 1;
+# if nworkers() == 1
+# 	addprocs(NumWorkers);
+# elseif nworkers() < NumWorkers
+# 	addprocs(NumWorkers - nworkers());
+# end
 
 @everywhere begin
 	using jInv.InverseSolve
@@ -52,13 +52,19 @@ dim     = 2;
 # jumpSrc = 5;
 # newSize = [600,300];
 
-pad     = 15;
-jumpSrc = 3;
-newSize = [300,100];
+# pad     = 15;
+# jumpSrc = 3;
+# newSize = [300,100];
 
-offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
-println("Offset is: ",offset," cells.")
-(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+# offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
+# println("Offset is: ",offset," cells.")
+
+
+# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+include(string(FWIDriversPath,"generateMrefMarmousi2.jl"));
+
+# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMrefMarmousi(modelDir, "examples/Marmousi2Vp.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+
 # omega = [2.0,2.5,3.5,4.5,6.0]*2*pi;
 omega = [2.0,2.5,3.0]*2*pi;
 maxBatchSize = 256;

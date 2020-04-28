@@ -61,7 +61,7 @@ offset  = 1000;
 domain = [0.0,20.0,0.0,4.0]; # without the pad for Marmousi 2
 newSize = [800,200];
 modelDir = pwd();
-(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMrefMarmousi(modelDir,"Marmousi2Vp.dat",dim,pad,domain,newSize,1.25,4.0);
+(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMrefMarmousi(modelDir,"examples/Marmousi2Vp.dat",dim,pad,domain,newSize,1.25,4.0);
 
 using PyPlot
 using jInvVisPyPlot
