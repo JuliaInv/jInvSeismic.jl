@@ -61,12 +61,15 @@ dim     = 2;
 
 
 # (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 include(string(FWIDriversPath,"generateMrefMarmousi2.jl"));
 
 # (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMrefMarmousi(modelDir, "examples/Marmousi2Vp.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 
-# omega = [2.0,2.5,3.5,4.5,6.0]*2*pi;
-omega = [2.0,2.5,3.0]*2*pi;
+# omega = [2.0,2.5,3.5,4.5,6.0]*2*pi; #SEG
+omega = [2.0,2.5,3.5,4.5,6.0,8.0]*2*pi; #Marmousi
+# omega = [2.0,2.5,3.0]*2*pi;
 maxBatchSize = 256;
 useFilesForFields = false;
 
@@ -79,7 +82,6 @@ writedlm(string(resultsFilename,"_mref.dat"),convert(Array{Float16},mref));
 resultsFilename = string(resultsFilename,".dat");
 
 println("omega*maximum(h): ",omega*maximum(Minv.h)*sqrt(maximum(1.0./(boundsLow.^2))));
-
 ABLpad = pad + 4;
 
 Ainv  = getParallelJuliaSolver(ComplexF64,Int64,numCores=4,backend=3);
@@ -88,6 +90,8 @@ workersFWI = workers();
 println(string("The workers that we allocate for FWI are:",workersFWI));
 prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
  									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+
+
 
 
 ########################################################################################################################
