@@ -2,14 +2,19 @@
 export readModelAndGenerateMeshMref
 # 1.75 and 2.9 are the velocities that are suitable for the SEG salt model
 
-function readModelAndGenerateMeshMref(readModelFolder::String,modelFilename::String,dim::Int64,pad::Int64,domain::Vector{Float64},newSize::Vector=[],velBottom::Float64=1.75,velHigh::Float64=2.9)
+function readModelAndGenerateMeshMref(readModelFolder::String,modelFilename::String,dim::Int64,pad::Int64,domain::Vector{Float64},newSize::Vector=[],velBottom::Float64=1.75,velHigh::Float64=2.9,
+	doTranspose=true)
 ########################## m,mref are in Velocity here. ###################################
 
 if dim==2
 	# SEGmodel2Deasy.dat
 	m = readdlm(string(readModelFolder,"/",modelFilename));
 	m = m*1e-3;
-	m = Matrix(m');
+	if doTranspose
+		m = Matrix(m');
+	else
+		m = Matrix(m);
+	end
 	mref = getSimilarLinearModel(m,velBottom,velHigh);
 else
 	# 3D SEG slowness model

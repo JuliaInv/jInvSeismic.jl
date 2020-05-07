@@ -47,7 +47,7 @@ resultsDir 	= pwd();
 modelDir 	= pwd();
 
 ########################################################################################################
-dim     = 2;
+# dim     = 2;
 # pad     = 30;
 # jumpSrc = 5;
 # newSize = [600,300];
@@ -61,14 +61,13 @@ dim     = 2;
 
 
 # (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
-# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+#(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
 # (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
-include(string(FWIDriversPath,"generateMrefMarmousi2.jl"));
-
-# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMrefMarmousi(modelDir, "examples/Marmousi2Vp.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+include(string(FWIDriversPath,"generateMrefMarmousi.jl"));
 
 # omega = [2.0,2.5,3.5,4.5,6.0]*2*pi; #SEG
 omega = [2.0,2.5,3.5,4.5,6.0,8.0]*2*pi; #Marmousi
+
 # omega = [2.0,2.5,3.0]*2*pi;
 maxBatchSize = 256;
 useFilesForFields = false;
