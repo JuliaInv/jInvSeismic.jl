@@ -1,5 +1,5 @@
 export expandModelNearest, getSimilarLinearModel, addAbsorbingLayer
-export addAbsorbingLayer
+export addAbsorbingLayer, smoothModel
 export velocityToSlowSquared,slowSquaredToVelocity,velocityToSlow,slowToSlowSquared,slowSquaredToSlow
 export slowToLeveledSlowSquared,getModelInvNewton
 using Statistics
@@ -185,3 +185,38 @@ end
 
 return mnew,MshNew;
 end
+
+
+
+function smoothModel(m,Mesh,times = 0)
+	ms = addAbsorbingLayer2D(m,times);
+	for k=1:times
+		for j = 2:size(ms,2)-1
+			for i = 2:size(ms,1)-1
+				@inbounds ms[i,j] = (2*ms[i,j] + (ms[i-1,j-1]+ms[i-1,j]+ms[i-1,j+1]+ms[i,j-1]+ms[i,j+1]+ms[i+1,j-1]+ms[i+1,j]+ms[i,j+1]))/10.0;
+			end
+		end
+	end
+	return ms[(times+1):(end-times),1:end-times];
+end
+
+
+# function smooth3(m,times = 0)
+	# println("Smoothing ", times," times");
+	# ms = copy(m);
+	# for k=1:times
+		# for l = 2:size(m,3)-1
+			# for j = 2:size(m,2)-1
+				# for i = 2:size(m,1)-1
+					# @inbounds ms[i,j,l] = (2*ms[i,j,l] + (ms[i,j,l+1]+ms[i,j,l-1]+ms[i-1,j,l] + ms[i+1,j,l]+ms[i,j-1,l]+ms[i,j+1,l]))/8.0;
+				# end
+			# end
+		# end
+	# end
+	# return ms;
+# end
+
+
+
+
+

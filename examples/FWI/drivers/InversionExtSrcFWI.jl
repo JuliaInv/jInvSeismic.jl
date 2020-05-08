@@ -73,7 +73,7 @@ maxBatchSize = 256;
 useFilesForFields = false;
 
 # ###################################################################################################################
-dataFilenamePrefix = string(dataDir,"/DATA_SEG",tuple((Minv.n)...));
+dataFilenamePrefix = string(dataDir,"/DATA_Marmousi",tuple((Minv.n)...));
 resultsFilename = string(resultsDir,"/FWI_ExtSrc",tuple((Minv.n)...));
 #######################################################################################################################
 writedlm(string(resultsFilename,"_mtrue.dat"),convert(Array{Float16},m));
@@ -87,8 +87,17 @@ Ainv  = getParallelJuliaSolver(ComplexF64,Int64,numCores=4,backend=3);
 
 workersFWI = workers();
 println(string("The workers that we allocate for FWI are:",workersFWI));
-prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
- 									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+
+
+
+figure(1,figsize = (22,10));
+plotModel(m,includeMeshInfo=false,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="orig");
+
+figure(2,figsize = (22,10));
+plotModel(mref,includeMeshInfo=false,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="mref");
+
+# prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
+ 									# pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 
@@ -122,8 +131,7 @@ end
 (Q,P,pMis,SourcesSubInd,contDiv,Iact,sback,mref,boundsHigh,boundsLow) =
 	setupFWI(m,dataFilenamePrefix,plotting,workersFWI,maxBatchSize,Ainv,SSDFun,useFilesForFields);
 
-figure(1,figsize = (22,10));
-plotModel(m,includeMeshInfo=false,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="orig");
+
 ########################################################################################################
 # Setting up the inversion for slowness instead of velocity:
 ########################################################################################################
@@ -159,6 +167,9 @@ modfun 		= identityMod;
 # Set up Inversion #################################################################################
 ########################################################################################################
 
+flush(Base.stdout)
+
+
 GN = "projGN"
 maxStep=0.05*maximum(boundsHigh);
 # regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
@@ -169,7 +180,7 @@ else
 	HesPrec = getSSORCGFourthOrderRegularizationPreconditioner(regparams,Minv,Iact,1.0,1e-8,1000);
 end
 
-alpha 	= 1e+4;
+alpha 	= 1e+2;
 pcgTol 	= 1e-1;
 maxit 	= 15;
 cgit 	= 5;
@@ -194,13 +205,17 @@ pInv.maxIter = 1;
 
 ts = time_ns();
 
-mc, = freqContExtendedSources(mc,Z1,Z2,7,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,"",2,0,GN);
-mc, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,"",3,1,GN);
+alpha1 = 5e-3;
+alpha2 = 8e0;
+stepReg = 0.0; #1e2;#4e+3
+
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,7,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,1,GN);
 
 regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
 pInv.regularizer = regfun;
 
-mc, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,"",3,2,GN);
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,2,GN);
 
 te = time_ns();
 

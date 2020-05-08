@@ -1,7 +1,5 @@
 using  jInv.Mesh
 using DelimitedFiles
-#using  jInv.LinearSolvers
-#using  jInv.InverseSolve
 using  jInv.Utils
 using jInvSeismic.FWI
 using jInvSeismic.Utils
@@ -23,6 +21,7 @@ else
 	m = m*1e-3;
 	mref = getSimilarLinearModel(m,velBottom,velHigh);
 end
+
 sea_level = 1.5;
 sea = abs.(m[:] .- 1.5) .< 1e-3;
 mref[sea] = m[sea];
@@ -37,6 +36,13 @@ Minv = getRegularMesh(domain,collect(size(m)));
 (mPadded,MinvPadded) = addAbsorbingLayer(m,Minv,pad);
 (mrefPadded,MinvPadded) = addAbsorbingLayer(mref,Minv,pad);
 
+mPaddedNoSalt = copy(mPadded);
+mPaddedNoSalt[mPaddedNoSalt .> 3.8] .= 3.8;
+
+mrefPadded = smoothModel(mPaddedNoSalt,[],250);
+sea_level = 1.5;
+sea = abs.(mPadded[:] .- 1.5) .< 1e-2;
+mrefPadded[sea] = mPadded[sea];
 
 N = prod(MinvPadded.n);
 boundsLow  = minimum(mPadded);
@@ -55,19 +61,11 @@ end
 
 dim     = 2;
 pad     = 50;
-jumpSrc    = 5;
+jumpSrc    = 10;
 offset  = 1000;
 domain = [0.0,9.192,0.0,2.904]; # without the pad for Marmousi 1
 # domain = [0.0,20.0,0.0,4.0]; # without the pad for Marmousi 2
-newSize = [800,200];
+newSize = [550,200];
 modelDir = pwd();
-(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMrefMarmousi(modelDir,"examples/MarmousiModelWithoutPad.dat",dim,pad,domain,newSize,1.25,4.0); # for marmousi1
+(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMrefMarmousi(modelDir,"./MarmousiModelWithoutPad.dat",dim,pad,domain,newSize,1.25,4.0); # for marmousi1
 #(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMrefMarmousi(modelDir,"examples/Marmousi2Vp.dat",dim,pad,domain,newSize,1.25,4.0); # for marmousi2
-
-using PyPlot
-using jInvVisPyPlot
-
-close("all")
-plotModel(m,includeMeshInfo=true,limits = [1.5,4.5],M_regular=Minv);
-figure()
-plotModel(mref,includeMeshInfo=true,limits = [1.5,4.5],M_regular=Minv)
