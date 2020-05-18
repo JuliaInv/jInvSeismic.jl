@@ -201,8 +201,8 @@ function MultAll(avgWds, HPinvs, R, Z1, Z2, alpha, stepReg)
 	for i = 1:length(avgWds)
 		sum += MultOpT(HPinvs[i], (avgWds[i]^2) .* MultOp(HPinvs[i], R, Z2), Z2)
 	end
-	eps = 1e-5
-	return sum + (alpha./(abs.(Z1) .+ eps * norm(Z1))).*R + stepReg*R;
+	eps = 1e-2
+	return sum + (alpha./(abs.(Z1) .+ eps * maximum(abs.(Z1)))).*R + stepReg*R;
 
 	# return sum + (alpha + stepReg)*R;
 end
@@ -216,8 +216,8 @@ function calculateZ1(misfitCalc::Function, nfreq::Integer, mergedWd::Array, merg
 	rhs .+= (stepReg) .* Z1
 
 	OP = x-> MultAll(mean.(real.(mergedWd)), HinvPs, x, Z1, Z2, alpha1, stepReg);
-	eps = 1e-5
-	M = (abs.(Z1) .+ eps * norm(Z1));
+	eps = 1e-2
+	M = (abs.(Z1) .+ eps * maximum(abs.(Z1)));
 	t1=time_ns()
 	Z1, = MyPCG(OP,rhs,Z1,M,5);
 	e1=time_ns()
@@ -377,7 +377,6 @@ for freqIdx = startFrom:(length(contDiv)-1)
 
 			
 			
-			
 			t1 = time_ns();
 			# Z1 = calculateZ1(misfitCalc2, nfreq, mergedWd, mergedRc, HinvPs, Z1, Z2, alpha1, stepReg);
 			mergedRcReduced = map(x -> x * TEmat, mergedRc)
@@ -484,9 +483,9 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		misfitReductionRatio = (FafterGN / F);
 		println("GN misfit reduction ratio : ",misfitReductionRatio);
 
-		alpha1 *= 0.95; #misfitReductionRatio
-		alpha2 *= 0.95; # misfitReductionRatio
-		pInv.alpha = pInv.alpha * 0.75;
+		#alpha1 *= 1.15; #misfitReductionRatio
+		#alpha2 *= 0.95; # misfitReductionRatio
+		#pInv.alpha = pInv.alpha * 0.75;
 
 
 		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);

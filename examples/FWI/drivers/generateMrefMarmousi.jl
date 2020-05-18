@@ -44,6 +44,9 @@ sea_level = 1.5;
 sea = abs.(mPadded[:] .- 1.5) .< 1e-2;
 mrefPadded[sea] = mPadded[sea];
 
+mrefRowsNum = size(mrefPadded, 1)
+mrefPadded = repeat(mean(mrefPadded,dims=1), outer=(mrefRowsNum, 1))
+
 N = prod(MinvPadded.n);
 boundsLow  = minimum(mPadded);
 boundsHigh = maximum(mPadded);

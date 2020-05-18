@@ -9,12 +9,12 @@ using jInvSeismic.Utils
 using Helmholtz
 using Statistics
 
-NumWorkers = 1;
-# if nworkers() == 1
-# 	addprocs(NumWorkers);
-# elseif nworkers() < NumWorkers
-# 	addprocs(NumWorkers - nworkers());
-# end
+NumWorkers = 10;
+ if nworkers() == 1
+ 	addprocs(NumWorkers);
+ elseif nworkers() < NumWorkers
+ 	addprocs(NumWorkers - nworkers());
+ end
 
 @everywhere begin
 	using jInv.InverseSolve
@@ -47,26 +47,26 @@ resultsDir 	= pwd();
 modelDir 	= pwd();
 
 ########################################################################################################
-# dim     = 2;
-# pad     = 30;
-# jumpSrc = 5;
-# newSize = [600,300];
+ dim     = 2;
+ pad     = 30;
+ jumpSrc = 5;
+newSize = [600,300];
 
-# pad     = 15;
-# jumpSrc = 3;
-# newSize = [300,100];
+#pad     = 15;
+#jumpSrc = 3;
+#newSize = [300,100];
 
-# offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
-# println("Offset is: ",offset," cells.")
+ offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
+ println("Offset is: ",offset," cells.")
 
 
 # (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 #(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
-# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
-include(string(FWIDriversPath,"generateMrefMarmousi.jl"));
+(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+#include(string(FWIDriversPath,"generateMrefMarmousi.jl"));
 
-# omega = [2.0,2.5,3.5,4.5,6.0]*2*pi; #SEG
-omega = [2.0,2.5,3.5,4.5,6.0,8.0]*2*pi; #Marmousi
+omega = [2.0,2.5,3.5,4.5,6.0]*2*pi; #SEG
+#omega = [2.0,2.5,3.5,4.5,6.0,8.0]*2*pi; #Marmousi
 
 # omega = [2.0,2.5,3.0]*2*pi;
 maxBatchSize = 256;
@@ -96,8 +96,8 @@ plotModel(m,includeMeshInfo=false,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],f
 figure(2,figsize = (22,10));
 plotModel(mref,includeMeshInfo=false,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="mref");
 
-# prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
- 									# pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
+ 									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 
@@ -188,6 +188,7 @@ cgit 	= 5;
 pInv = getInverseParam(Minv,modfun,regfun,alpha,mref[:],boundsLow,boundsHigh,
                          maxStep=maxStep,pcgMaxIter=cgit,pcgTol=pcgTol,
 						 minUpdate=1e-3, maxIter = maxit,HesPrec=HesPrec);
+dump(mref, 1, 0,  pInv, pMis, "mref.png")
 mc = copy(mref[:]);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",1,0,GN);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
@@ -205,8 +206,8 @@ pInv.maxIter = 1;
 
 ts = time_ns();
 
-alpha1 = 5e-3;
-alpha2 = 8e0;
+alpha1 = 1e-2;
+alpha2 = 5e1;
 stepReg = 0.0; #1e2;#4e+3
 
 mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,7,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
