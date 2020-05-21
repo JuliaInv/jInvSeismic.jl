@@ -48,21 +48,21 @@ modelDir 	= pwd();
 
 ########################################################################################################
  dim     = 2;
- pad     = 30;
- jumpSrc = 5;
-newSize = [600,300];
+#  pad     = 30;
+#  jumpSrc = 5;
+# newSize = [600,300];
 
-#pad     = 15;
-#jumpSrc = 3;
-#newSize = [300,100];
+pad     = 15;
+jumpSrc = 3;
+newSize = [300,100];
 
  offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
  println("Offset is: ",offset," cells.")
 
 
-# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 #(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
-(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
+# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
 #include(string(FWIDriversPath,"generateMrefMarmousi.jl"));
 
 omega = [2.0,2.5,3.5,4.5,6.0]*2*pi; #SEG

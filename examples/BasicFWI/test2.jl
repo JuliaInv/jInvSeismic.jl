@@ -45,15 +45,15 @@ n=67
 function extractNum(str)
 	return str[9:end-1]
 end
-
-Z1abs = readdlm("FWI_ExtSrc(660, 330)_Cyc1_FC5_10_GN1.dat")
-println(size(Z1abs))
-figure();
-imshow(Z1abs')
-# imshow(reshape(x, (580,331))')
-colorbar();
-# Z1abs = readdlm("zs_FC5_cyc2_5.mat")
-println(norm(Z1abs))
+#
+# Z1abs = readdlm("FWI_ExtSrc(660, 330)_Cyc1_FC5_10_GN1.dat")
+# println(size(Z1abs))
+# figure();
+# imshow(Z1abs')
+# # imshow(reshape(x, (580,331))')
+# colorbar();
+Z1abs = readdlm("zs_FC3_cyc0_2.mat")
+# println(norm(Z1abs))
 # signs = Z1abs[:,2]
 # minuses = signs[signs .== "-"]
 # b = zeros(size(Z1abs,1))
@@ -78,7 +78,7 @@ println(norm(Z1abs))
 # median(x)
 maxZ1 = maximum(Z1abs)
 println(maxZ1)
-a = map(x -> x > 5e-2*maxZ1 ? x : 0, Z1abs)
+a = map(x -> x > 5e-12*maxZ1 ? x : 0, Z1abs)
 println(size(Z1abs[Z1abs .> 5e-2*maxZ1]))
 # for
 figure();

@@ -1,4 +1,4 @@
-export updateWd,multWd,setSources
+export updateWd,multWd,setSources,setDobs
 function updateWd(pMis::Array{RemoteChannel},Dc::Array{RemoteChannel})
 @sync begin
 	@async begin
@@ -37,7 +37,26 @@ put!(pMisRF,pMis)
 return pMisRF;
 end
 
-export setSources
+export setSources, setDobs
+
+function setDobs(pMis::Array{RemoteChannel},newDobs::Array)
+@sync begin
+	@async begin
+		for k=1:length(pMis)
+			## TODO: make sure sources are replicated for different frequencies
+			pMis[k] = remotecall_fetch(setDobs,pMis[k].where,pMis[k],newDobs[k]);
+		end
+	end
+end
+return pMis;
+end
+
+function setDobs(pMisRF::RemoteChannel,newDobs)
+pMis  = take!(pMisRF)
+pMis.dobs = newDobs;
+put!(pMisRF,pMis)
+return pMisRF;
+end
 
 function setSources(pMis::Array{RemoteChannel},newSources::Array)
 @sync begin
