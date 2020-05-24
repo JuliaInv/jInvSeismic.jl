@@ -158,7 +158,8 @@ function misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2,HinvPs)
 	## HERE WE  NEED TO MAKE SURE THAT Wd is equal in its real and imaginary parts.
 	sum = 0.0;
 	for i = 1:nfreq
-		res, = SSDFun((HinvPs[i]' * Z1) * Z2,mergedRc[i],mergedWd[i] .* ones(size(mergedRc[i])));
+		println("mergedWD: ", mean(mergedWd[i]))
+		res, = SSDFun((HinvPs[i]' * Z1) * Z2,mergedRc[i],mean(mergedWd[i]) .* ones(size(mergedRc[i])));
 		sum += res;
 	end
 	return sum;
@@ -259,7 +260,7 @@ N_nodes = prod(pInv.MInv.n .+ 1);
 nsrc = size(originalSources, 2);
 
 
-stepReg = 0.0;
+stepReg = 1e4;
 println("FreqCont: Regs are: ",alpha1,",",stepReg);
 
 p = size(Z1,2);
@@ -369,7 +370,8 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		mis = misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs);
 		obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 		println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
-
+			mis = misfitCalc2(zeros(size(Z1)),zeros(size(Z2*TEmat)),mergedWd,map(x->x*TEmat,mergedRc),nfreq,alpha1,alpha2, HinvPs);
+			println("mis: ",mis)
 
 		for iters = 1:5
 			#Print misfit at start
@@ -421,7 +423,6 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		end
 		writedlm(string("zs_FC",freqIdx, "_cyc", cycle,"_",j,".mat"),convert(Array{Float16},Z1abs));
 
-		# throw("A")
 		# Update the pMis with new sources
 		# newSrc = Z1*Z2
 		# NewSourcesDivided = Array{SparseMatrixCSC}(undef,length(currentSrcInd));
@@ -430,31 +431,44 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		# end
 
 		newSrc = Z1*Z2*TEmat
-        origSrcTE = originalSources * TEmat
-		dobsTE = mergedDobs * TEmat
-        newSrcInd = [Int[] for i=1:length(currentSrcInd)]
-        NewSourcesDivided = Array{SparseMatrixCSC}(undef,length(newSrcInd));
-		NewDobsDivided = Array{SparseMatrixCSC}(undef,length(newSrcInd));
-		origDobsDivided = Array{SparseMatrixCSC}(undef,length(currentSrcInd));
-		for k=1:length(currentSrcInd)
-			origDobsDivided[k] = mergedDobs[:,currentSrcInd[k]];
+        	origSrcTE = originalSources * TEmat
+		dobsTE = map(x-> x * TEmat, mergedDobs);
+		sizeWD = size(dobsTE[1])
+		wdTE = map(x-> mean(x) * ones(sizeWD), mergedWd);
+        
+		newSrcInd = [Int[] for i=1:length(currentSrcInd)]
+        	NewSourcesDivided = Array{SparseMatrixCSC}(undef,length(newSrcInd));
+		NewDobsDivided = Array{Array{ComplexF64}}(undef,nwork * length(mergedDobs));
+		origDobsDivided = Array{Array{ComplexF64}}(undef,nwork * length(mergedDobs));
+		NewWdDivided = Array{Array{ComplexF64}}(undef,nwork * length(mergedWd));
+		origWdDivided = Array{Array{ComplexF64}}(undef,nwork * length(mergedWd));
+		
+		for k=1:length(NewDobsDivided)
+				origDobsDivided[k] = mergedDobs[trunc(Integer, (k-1) / nwork) + 1][:,currentSrcInd[k]];
+				origWdDivided[k] = mergedWd[trunc(Integer, (k-1) / nwork) + 1][:,currentSrcInd[k]];
+			end
+
+		for k=1:size(TEmat,2)
+			for i=1:nfreq
+                		append!(newSrcInd[(k % nwork) + 1 + (i-1)*10], k)
+			end
+        	end
+	
+        	for k=1:length(newSrcInd)
+			NewDobsDivided[k] = dobsTE[trunc(Integer, (k-1) / nwork) + 1][:,newSrcInd[k]];
+			NewWdDivided[k] = wdTE[trunc(Integer, (k-1) / nwork) + 1][:,newSrcInd[k]];
+			#NewDobsDivided[i][k] = dobsTE[i][:,newSrcInd[k]];
 		end
 
-
-		print(currentSrcInd)
-        for k=1:size(TEmat,2)
-                append!(newSrcInd[(k % nwork) + 1], k)
-        end
-        for k=1:length(newSrcInd)
-                NewSourcesDivided[k] = origSrcTE[:,newSrcInd[k]] + newSrc[:,newSrcInd[k]];
-				NewDobsDivided[k] = dobsTE[:,newSrcInd[k]];
-        end
-
+        	for k=1:length(newSrcInd)
+                	NewSourcesDivided[k] = origSrcTE[:,newSrcInd[k]] + newSrc[:,newSrcInd[k]];
+        	end
 
 
 
 		pMisTemp = setSources(pMisTemp,NewSourcesDivided);
 		pMisTemp = setDobs(pMisTemp,NewDobsDivided)
+		pMisTemp = setWd(pMisTemp,NewWdDivided)
 
 
 
@@ -478,8 +492,6 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		end
 
 		pMisTE = pMisTemp;
-		# pMisTE = calculateReducedMisfitParams(mc, currentProblems, pMisTemp, Iact, mback, TEmat, Dc, nfreq,
-		#  nsrc, nrcv, nwork, currentSrcInd);
 		# pInv.mref = mc[:];
 
 		flush(Base.stdout)
@@ -515,6 +527,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 
 		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);
 		pMisTemp = setDobs(pMisTemp,origDobsDivided)
+		pMisTemp = setWd(pMisTemp,origWdDivided)
 
 		if hisMatFileName != ""
 			file = matopen(string(hisMatFileName,"_HisGN.mat"), "w");

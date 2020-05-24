@@ -48,21 +48,21 @@ modelDir 	= pwd();
 
 ########################################################################################################
  dim     = 2;
-#  pad     = 30;
-#  jumpSrc = 5;
-# newSize = [600,300];
+  pad     = 30;
+  jumpSrc = 5;
+ newSize = [600,300];
 
-pad     = 15;
-jumpSrc = 3;
-newSize = [300,100];
+#pad     = 15;
+#jumpSrc = 3;
+#newSize = [300,100];
 
  offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
  println("Offset is: ",offset," cells.")
 
 
-(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+#(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 #(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
-# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
+ (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
 #include(string(FWIDriversPath,"generateMrefMarmousi.jl"));
 
 omega = [2.0,2.5,3.5,4.5,6.0]*2*pi; #SEG
@@ -96,8 +96,8 @@ plotModel(m,includeMeshInfo=false,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],f
 figure(2,figsize = (22,10));
 plotModel(mref,includeMeshInfo=false,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="mref");
 
-prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
- 									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+#prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
+# 									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 
@@ -206,9 +206,9 @@ pInv.maxIter = 1;
 
 ts = time_ns();
 
-alpha1 = 1e-2;
-alpha2 = 5e1;
-stepReg = 0.0; #1e2;#4e+3
+alpha1 = 3e-1;
+alpha2 = 3e1;
+stepReg = 1e4; #1e2;#4e+3
 
 mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,7,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
 mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,1,GN);
