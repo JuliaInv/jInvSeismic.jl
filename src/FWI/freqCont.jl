@@ -158,7 +158,6 @@ function misfitCalc2(Z1,Z2,mergedWd,mergedRc,nfreq,alpha1,alpha2,HinvPs)
 	## HERE WE  NEED TO MAKE SURE THAT Wd is equal in its real and imaginary parts.
 	sum = 0.0;
 	for i = 1:nfreq
-		println("mergedWD: ", mean(mergedWd[i]))
 		res, = SSDFun((HinvPs[i]' * Z1) * Z2,mergedRc[i],mean(mergedWd[i]) .* ones(size(mergedRc[i])));
 		sum += res;
 	end
