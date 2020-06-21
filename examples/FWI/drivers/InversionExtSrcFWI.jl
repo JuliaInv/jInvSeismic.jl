@@ -9,7 +9,7 @@ using jInvSeismic.Utils
 using Helmholtz
 using Statistics
 
-NumWorkers = 2;
+NumWorkers = 10;
  if nworkers() == 1
  	addprocs(NumWorkers);
  elseif nworkers() < NumWorkers
