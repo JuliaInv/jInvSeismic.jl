@@ -50,19 +50,14 @@ modelDir 	= pwd();
 
 ########## uncomment block for SEG ###############
 
- dim     = 2;
- # real
- #  pad     = 30;
- #  jumpSrc = 5;
- # newSize = [600,300];
+dim     = 2;
+pad     = 30;
+jumpSrc = 5;
+newSize = [600,300];
 
- # dummy
- pad     = 15;
- jumpSrc = 3;
- newSize = [60,20];
- (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
- #(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
-  # (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
+(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+#(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
+# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
 omega = [2.0,2.5,3.5,4.5,6.0]*2*pi; #SEG
 offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
 println("Offset is: ",offset," cells.")
@@ -88,7 +83,6 @@ stepReg = 1e4; #1e2;#4e+3
 
 #######################################################
 
-# omega = [2.0,2.5,3.0]*2*pi;
 maxBatchSize = 256;
 useFilesForFields = false;
 
