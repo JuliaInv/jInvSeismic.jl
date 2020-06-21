@@ -9,7 +9,7 @@ using jInvSeismic.Utils
 using Helmholtz
 using Statistics
 
-NumWorkers = 10;
+NumWorkers = 2;
  if nworkers() == 1
  	addprocs(NumWorkers);
  elseif nworkers() < NumWorkers
@@ -47,26 +47,46 @@ resultsDir 	= pwd();
 modelDir 	= pwd();
 
 ########################################################################################################
+
+########## uncomment block for SEG ###############
+
  dim     = 2;
-  pad     = 30;
-  jumpSrc = 5;
- newSize = [600,300];
+ # real
+ #  pad     = 30;
+ #  jumpSrc = 5;
+ # newSize = [600,300];
 
-#pad     = 15;
-#jumpSrc = 3;
-#newSize = [300,100];
-
- offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
- println("Offset is: ",offset," cells.")
-
-
-#(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
-#(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
- (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
-#include(string(FWIDriversPath,"generateMrefMarmousi.jl"));
-
+ # dummy
+ pad     = 15;
+ jumpSrc = 3;
+ newSize = [60,20];
+ (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+ #(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
+  # (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
 omega = [2.0,2.5,3.5,4.5,6.0]*2*pi; #SEG
+offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
+println("Offset is: ",offset," cells.")
+
+alpha1 = 3e-1;
+alpha2 = 5e1;
+stepReg = 1e4; #1e2;#4e+3
+
+##################################################
+
+
+
+
+
+########## uncomment block for marmousi ###############
+
+#include(string(FWIDriversPath,"generateMrefMarmousi.jl"));
 #omega = [2.0,2.5,3.5,4.5,6.0,8.0]*2*pi; #Marmousi
+
+# alpha1 = 1e-1;
+# alpha2 = 1e1;
+# stepReg = 1e4; #1e2;#4e+3
+
+#######################################################
 
 # omega = [2.0,2.5,3.0]*2*pi;
 maxBatchSize = 256;
@@ -96,8 +116,8 @@ plotModel(m,includeMeshInfo=false,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],f
 figure(2,figsize = (22,10));
 plotModel(mref,includeMeshInfo=false,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="mref");
 
-#prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
-# 									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
+									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 
@@ -190,9 +210,14 @@ pInv = getInverseParam(Minv,modfun,regfun,alpha,mref[:],boundsLow,boundsHigh,
 						 minUpdate=1e-3, maxIter = maxit,HesPrec=HesPrec);
 dump(mref, 1, 0,  pInv, pMis, "mref.png")
 mc = copy(mref[:]);
+
+################ uncomment for regular FWI ##################
+
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",1,0,GN);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,1,GN);
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",3,2,GN);
+
+#############################################################
 
 p = 25;
 N_nodes = prod(Minv.n.+1);
@@ -201,24 +226,35 @@ Z1 = 1e-4*rand(ComplexF64,(N_nodes, p));
 Z2 = zeros(ComplexF64, (p, nsrc)); #0.01*rand(ComplexF64, (p, nsrc)) .+ 0.01;
 pInv.maxIter = 1;
 
-# function freqContExtendedSources(mc,Z1,Z2,originalSources::SparseMatrixCSC,nrec, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
-			# resultsFilename::String,dumpFun::Function,mode::String="",startFrom::Int64 = 1,cycle::Int64=0,method::String="projGN")
 
+
+
+############# uncomment for extended sources only ####################
+# ts = time_ns();
+# mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,7,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
+# mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,1,GN);
+#
+# regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
+# pInv.regularizer = regfun;
+#
+# mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,2,GN);
+# te = time_ns();
+####################################################################################
+
+############# uncomment for extended sources and simultaneous sources #########
 ts = time_ns();
-
-alpha1 = 3e-1;
-alpha2 = 3e1;
-stepReg = 1e4; #1e2;#4e+3
-
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,7,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,1,GN);
+newDim = 25;
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,7,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,1,GN);
 
 regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
 pInv.regularizer = regfun;
 
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,2,GN);
-
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,2,GN);
 te = time_ns();
+####################################################################################
+
+
 
 println("runtime of inversion");
 println((ts - te)/1.0e9);
