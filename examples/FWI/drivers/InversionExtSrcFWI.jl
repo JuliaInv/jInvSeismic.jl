@@ -8,13 +8,15 @@ using jInvSeismic.FWI
 using jInvSeismic.Utils
 using Helmholtz
 using Statistics
+using jInv.InverseSolve
+using jInv.LinearSolvers
 
-NumWorkers = 10;
- if nworkers() == 1
- 	addprocs(NumWorkers);
- elseif nworkers() < NumWorkers
- 	addprocs(NumWorkers - nworkers());
- end
+# NumWorkers = 10;
+ # if nworkers() == 1
+ 	# addprocs(NumWorkers);
+ # elseif nworkers() < NumWorkers
+ 	# addprocs(NumWorkers - nworkers());
+ # end
 
 @everywhere begin
 	using jInv.InverseSolve
@@ -55,15 +57,15 @@ pad     = 30;
 jumpSrc = 5;
 newSize = [600,300];
 
-(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"../SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 #(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
 # (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
-omega = [2.0,2.5,3.5,4.5,6.0]*2*pi; #SEG
+omega = [2.0,2.5,3.0,3.5,4.5,5.5,6.5]*2*pi; #SEG
 offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
 println("Offset is: ",offset," cells.")
 
-alpha1 = 3e-1;
-alpha2 = 5e1;
+alpha1 = 1e-1;
+alpha2 = 1e1;
 # stepReg = 1e4; #1e2;#4e+3
 
 ##################################################
@@ -105,13 +107,13 @@ println(string("The workers that we allocate for FWI are:",workersFWI));
 
 
 figure(1,figsize = (22,10));
-plotModel(m,includeMeshInfo=false,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="orig");
+plotModel(m,includeMeshInfo=true,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="orig");
 
 figure(2,figsize = (22,10));
-plotModel(mref,includeMeshInfo=false,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="mref");
+plotModel(mref,includeMeshInfo=true,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="mref");
 
-prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
-									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+#prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
+#									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 
@@ -164,7 +166,7 @@ function dump(mc,Dc,iter,pInv,PMis,resultsFilename)
 		figure(888,figsize = (22,10));
 		clf();
 		filename = splitdir(Temp)[2];
-		plotModel(fullMc,includeMeshInfo=false,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],filename=filename,figTitle=filename);
+		plotModel(fullMc,includeMeshInfo=true,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],filename=filename,figTitle=filename);
 	end
 end
 
@@ -238,13 +240,13 @@ pInv.maxIter = 1;
 ############# uncomment for extended sources and simultaneous sources #########
 ts = time_ns();
 newDim = 25;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,10,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,1,GN);
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,5,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,5,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,1,GN);
 
 regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
 pInv.regularizer = regfun;
 
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,2,GN);
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,5,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,2,GN);
 te = time_ns();
 ####################################################################################
 

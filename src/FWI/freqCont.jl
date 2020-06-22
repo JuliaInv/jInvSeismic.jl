@@ -253,7 +253,6 @@ function freqContExtendedSourcesSS(mc,Z1,Z2,newDim,itersNum::Int64,originalSourc
 Dc = 0;
 flag = -1;
 HIS = [];
-println("START EX")
 
 alpha2 = alpha2Orig / newDim;
 
@@ -262,7 +261,7 @@ nsrc = size(originalSources, 2);
 
 
 stepReg = 0.0;
-println("FreqCont: Regs are: ",alpha1,",",alpha2,",",stepReg);
+println("~~~~~~~~~~~~~~~  FreqCont: Regs are: ",alpha1,",",alpha2,",",stepReg);
 
 p = size(Z1,2);
 nwork = nworkers()
@@ -302,15 +301,30 @@ for freqIdx = startFrom:(length(contDiv)-1)
 	for k=1:length(currentSrcInd)
 		OrininalSourcesDivided[k] = originalSources[:,currentSrcInd[k]];
 	end
-
+	FafterGN = 0.0;
+	
 	for j = 1:itersNum
 		flush(Base.stdout)
 
 		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);
 		# Here we get the current data with clean sources. Also define Ainv (which should be defined already but never mind...).
-		Dc,F, = computeMisfit(mc,pMisTemp,false);
+		Dc,F_zero, = computeMisfit(mc,pMisTemp,false);
 
-		println("Computed Misfit with orig sources : ",F);
+		println("Computed Misfit with orig sources : ",F_zero);
+		
+		if j>1
+			if FafterGN > F_zero*0.5
+				alpha2 = alpha2*1.5;
+				alpha1 = alpha1*1.5;
+				println("Ratio FafterGN/F_zero is: ",FafterGN/F_zero,", hence increasing alphas by 1.5:",alpha1,",",alpha2);
+			else
+				alpha2 = alpha2/1.5;
+				alpha1 = alpha1/1.5;
+				println("Ratio FafterGN/F_zero is: ",FafterGN/F_zero,", hence decreasing alphas by 1.5",alpha1,",",alpha2);
+			end
+		end
+		
+		
 		t1 = time_ns();
 		HinvPs = computeHinvTRec(pMisTemp[1:nwork:numOfCurrentProblems]);
 		e1 = time_ns();
@@ -393,10 +407,10 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		# get number of non zero elements
 		Z1a = abs.(Z1)
 		maxZ1 = maximum(Z1a)
-		nzcm = size(Z1a[Z1a .> 1e-2*maxZ1])
-		nzc = size(Z1a[Z1a .> 1e-3])
+		nzcm = length(Z1a[Z1a .> 1e-2*maxZ1])
+		nzc = length(Z1a[Z1a .> 1e-3])
 
-		println("Cyc ", cycle, " freqCont ", freqIdx, " iter ", j, "nzc ", nzc, "nzcm ", nzcm)
+		println("Cyc ", cycle, " freqCont ", freqIdx, " iter ", j, ", %nzc ", nzc/prod(size(Z1)), ", %nzcm ", nzcm/prod(size(Z1)))
 
 
 
@@ -489,16 +503,18 @@ for freqIdx = startFrom:(length(contDiv)-1)
 
 		misfitReductionRatio = (FafterGN / F);
 		println("GN misfit reduction ratio : ",misfitReductionRatio);
+		
+		
+		 
+		# if norm(Z1)^2 > 500
+			# alpha1 *= 1.15; #misfitReductionRatio
 
-		if norm(Z1)^2 > 500
-			alpha1 *= 1.15; #misfitReductionRatio
+			# println("icreasing alpha1: ", alpha1)
+		# end
 
-			println("icreasing alpha1: ", alpha1)
-		end
-
-		if alpha1 < 1e-3 && (abs(obj - initialObj) < 10 || (norm(Z1)^2 < 100 && cycle != 2))
-			alpha1 /= 2
-		end
+		# if alpha1 < 1e-3 && (abs(obj - initialObj) < 10 || (norm(Z1)^2 < 100 && cycle != 2))
+			# alpha1 /= 2
+		# end
 
 		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);
 		pMisTemp = setDobs(pMisTemp,origDobsDivided)
