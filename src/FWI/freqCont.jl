@@ -261,7 +261,7 @@ N_nodes = prod(pInv.MInv.n .+ 1);
 nsrc = size(originalSources, 2);
 
 
-stepReg = 0;
+stepReg = 0.0;
 println("FreqCont: Regs are: ",alpha1,",",alpha2,",",stepReg);
 
 p = size(Z1,2);
