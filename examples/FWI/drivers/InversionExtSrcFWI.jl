@@ -240,13 +240,14 @@ pInv.maxIter = 1;
 ############# uncomment for extended sources and simultaneous sources #########
 ts = time_ns();
 newDim = 25;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,5,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,5,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,1,GN);
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,5,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 5,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
+pInv.alpha *= 0.1;
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,5,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 5,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,1,GN);
 
 regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
 pInv.regularizer = regfun;
 
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,5,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,2,GN);
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,5,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 5,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,2,GN);
 te = time_ns();
 ####################################################################################
 

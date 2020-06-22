@@ -313,11 +313,11 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		println("Computed Misfit with orig sources : ",F_zero);
 		
 		if j>1
-			if FafterGN < F_zero*0.5
+			if FafterGN < F_zero*0.25
 				alpha2 = alpha2*1.5;
 				alpha1 = alpha1*1.5;
 				println("Ratio FafterGN/F_zero is: ",FafterGN/F_zero,", hence increasing alphas by 1.5:",alpha1,",",alpha2);
-			else
+			elseif FafterGN > F_zero*0.75 
 				alpha2 = alpha2/1.5;
 				alpha1 = alpha1/1.5;
 				println("Ratio FafterGN/F_zero is: ",FafterGN/F_zero,", hence decreasing alphas by 1.5",alpha1,",",alpha2);
@@ -339,30 +339,31 @@ for freqIdx = startFrom:(length(contDiv)-1)
 			end
 			mergedRc[f] .+= mergedDobs[f];
 		end
+		
+		# iterations of alternating minimization between Z1 and Z2
+		println("Misfit with Zero Z2: ", misfitCalc2(zeros(ComplexF64, (N_nodes, p)),zeros(ComplexF64, (p, nsrc)),mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs))
+		
+		
 		mergedRcReduced = map(x-> x*TEmat, mergedRc)
 		if cycle == 0 && j == 1 && freqIdx == startFrom
 			Z2 = Z2*TEmat
 		end
-		# iterations of alternating minimization between Z1 and Z2
-		println("Misfit with Zero Z2: ", misfitCalc2(zeros(ComplexF64, (N_nodes, p)),zeros(ComplexF64, (p, nsrc)),mergedWd,mergedRc,nfreq,alpha1,alpha2, HinvPs))
 		mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(newDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
 		obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
-		initialMis = mis
-		initialObj = obj
-		println("At Start: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
+		
+		#println("At Start: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 		pMisTempFetched = map(fetch, pMisTemp)
 		prevObj = 0
 
 		t1 = time_ns();
-
-		if norm(Z1)^2 > 1e-100
-			Z2 = calculateZ2(misfitCalc2, p, newDim, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd ./ sqrt(newDim), mergedRcReduced, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
-		end
+		Z2 = calculateZ2(misfitCalc2, p, newDim, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd ./ sqrt(newDim), mergedRcReduced, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
 		e1 = time_ns();
 
-		print("After Z2:");
+		print("After First Z2 update:");
 		mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(newDim),mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
 		obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
+		initialMis = mis
+		initialObj = obj
 		println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 		for iters = 1:5
 
@@ -464,8 +465,8 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		pMisTemp = setDobs(pMisTemp,NewDobsDivided)
 		pMisTemp = setWd(pMisTemp,NewWdDivided)
 
-		Dc,F, = computeMisfit(mc,pMisTemp,false);
-		println("Computed Misfit with new sources : ",F);
+		# Dc,F, = computeMisfit(mc,pMisTemp,false);
+		# println("Computed Misfit with new sources : ",F);
 
 		if resultsFilename == ""
 			filename = "";
@@ -500,8 +501,9 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		Dc,FafterGN, = computeMisfit(mc,pMisTE,false);
 		println("Computed Misfit with new sources after GN : ",FafterGN);
 
-		misfitReductionRatio = (FafterGN / F);
-		println("GN misfit reduction ratio : ",misfitReductionRatio);
+		# misfitReductionRatio = (FafterGN / F);
+		# ERAN: no need to compute the print this. This is shown as part of GN.
+		# println("GN misfit reduction ratio : ",misfitReductionRatio);
 		
 		
 		 
