@@ -313,7 +313,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		println("Computed Misfit with orig sources : ",F_zero);
 		
 		if j>1
-			if FafterGN > F_zero*0.5
+			if FafterGN < F_zero*0.5
 				alpha2 = alpha2*1.5;
 				alpha1 = alpha1*1.5;
 				println("Ratio FafterGN/F_zero is: ",FafterGN/F_zero,", hence increasing alphas by 1.5:",alpha1,",",alpha2);
@@ -375,18 +375,17 @@ for freqIdx = startFrom:(length(contDiv)-1)
 				break
 			end
 
-
 			Z1 = calculateZ1(misfitCalc2, nfreq, mergedWd ./ sqrt(newDim), mergedRcReduced, HinvPs, Z1, Z2, alpha1, stepReg);
-
-			# roll new TE matrix
-			TEmat = rand([-1,1],(nsrc,newDim));
-			mergedRcReduced = map(x -> x * TEmat, mergedRc);
 
 			print("After Z1:");
 			mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(newDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
 			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 			println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
-
+			
+			# roll new TE matrix
+			TEmat = rand([-1,1],(nsrc,newDim));
+			mergedRcReduced = map(x -> x * TEmat, mergedRc);
+						
 			Z2 = calculateZ2(misfitCalc2, p, newDim, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd ./ sqrt(newDim), mergedRcReduced, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
 
 			print("After Z2:");
