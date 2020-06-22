@@ -248,18 +248,20 @@ function getMergedData(pMisTemp::Array{RemoteChannel}, nfreq, nsrc, nrcv, nwork,
 end
 
 function freqContExtendedSourcesSS(mc,Z1,Z2,newDim,itersNum::Int64,originalSources::SparseMatrixCSC,nrcv, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
-			resultsFilename::String,dumpFun::Function,Iact,mback,alpha1,alpha2,mode::String="",startFrom::Int64 = 1,cycle::Int64=0,method::String="projGN")
+			resultsFilename::String,dumpFun::Function,Iact,mback,alpha1,alpha2Orig,
+			mode::String="",startFrom::Int64 = 1,cycle::Int64=0,method::String="projGN")
 Dc = 0;
 flag = -1;
 HIS = [];
 println("START EX")
 
+alpha2 = alpha2Orig / newDim;
 
 N_nodes = prod(pInv.MInv.n .+ 1);
 nsrc = size(originalSources, 2);
 
 
-stepReg = 1e2;
+stepReg = 0;
 println("FreqCont: Regs are: ",alpha1,",",alpha2,",",stepReg);
 
 p = size(Z1,2);
@@ -350,9 +352,6 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 		for iters = 1:5
 
-			# roll new TE matrix
-			TEmat = rand([-1,1],(nsrc,newDim));
-
 			#Print misfit at start
 			println("============================== New Z1-Z2 Iter ======================================");
 
@@ -362,8 +361,12 @@ for freqIdx = startFrom:(length(contDiv)-1)
 				break
 			end
 
-			mergedRcReduced = map(x -> x * TEmat, mergedRc)
+
 			Z1 = calculateZ1(misfitCalc2, nfreq, mergedWd ./ sqrt(newDim), mergedRcReduced, HinvPs, Z1, Z2, alpha1, stepReg);
+
+			# roll new TE matrix
+			TEmat = rand([-1,1],(nsrc,newDim));
+			mergedRcReduced = map(x -> x * TEmat, mergedRc);
 
 			print("After Z1:");
 			mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(newDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
@@ -493,7 +496,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 			println("icreasing alpha1: ", alpha1)
 		end
 
-		if abs(obj - initialObj) < 10 || (norm(Z1)^2 < 100 && cycle != 2)
+		if alpha1 < 1e-3 && (abs(obj - initialObj) < 10 || (norm(Z1)^2 < 100 && cycle != 2))
 			alpha1 /= 2
 		end
 

@@ -64,7 +64,7 @@ println("Offset is: ",offset," cells.")
 
 alpha1 = 3e-1;
 alpha2 = 5e1;
-stepReg = 1e4; #1e2;#4e+3
+# stepReg = 1e4; #1e2;#4e+3
 
 ##################################################
 
@@ -74,9 +74,9 @@ stepReg = 1e4; #1e2;#4e+3
 
 ########## uncomment block for marmousi ###############
 
-#include(string(FWIDriversPath,"generateMrefMarmousi.jl"));
-#omega = [2.0,2.5,3.5,4.5,6.0,8.0]*2*pi; #Marmousi
-
+# include(string(FWIDriversPath,"generateMrefMarmousi.jl"));
+# omega = [2.0,2.5,3.5,4.5,6.0,8.0]*2*pi; #Marmousi
+#
 # alpha1 = 1e-1;
 # alpha2 = 1e1;
 # stepReg = 1e4; #1e2;#4e+3
@@ -216,7 +216,7 @@ mc = copy(mref[:]);
 p = 25;
 N_nodes = prod(Minv.n.+1);
 nsrc = size(Q,2);
-Z1 = 1e-4*rand(ComplexF64,(N_nodes, p));
+Z1 = 2e-4*rand(ComplexF64,(N_nodes, p));
 Z2 = zeros(ComplexF64, (p, nsrc)); #0.01*rand(ComplexF64, (p, nsrc)) .+ 0.01;
 pInv.maxIter = 1;
 
@@ -238,7 +238,7 @@ pInv.maxIter = 1;
 ############# uncomment for extended sources and simultaneous sources #########
 ts = time_ns();
 newDim = 25;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,7,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,10,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
 mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,1,GN);
 
 regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
