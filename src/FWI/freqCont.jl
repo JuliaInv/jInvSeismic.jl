@@ -203,7 +203,7 @@ function MultAll(avgWds, HPinvs, R, Z1, Z2, alpha, stepReg)
 		sum += MultOpT(HPinvs[i], (avgWds[i]^2) .* MultOp(HPinvs[i], R, Z2), Z2)
 	end
 	eps = 1e-2
-	return sum + ((0.5*alpha)./(abs.(Z1) .+ eps * maximum(abs.(Z1)))).*R + stepReg*R;
+	return sum + (alpha./(abs.(Z1) .+ eps * maximum(abs.(Z1)))).*R + stepReg*R;
 
 	# return sum + (alpha + stepReg)*R;
 end
