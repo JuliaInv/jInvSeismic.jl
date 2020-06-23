@@ -304,6 +304,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 	FafterGN = 0.0;
 	
 	for j = 1:itersNum
+		println("============================== New ALM Iter ======================================");
 		flush(Base.stdout)
 
 		pMisTemp = setSources(pMisTemp,OrininalSourcesDivided);
@@ -345,11 +346,11 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		
 		
 		mergedRcReduced = map(x-> x*TEmat, mergedRc)
-		if cycle == 0 && j == 1 && freqIdx == startFrom
-			Z2 = Z2*TEmat
-		end
-		mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(newDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
-		obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
+		# if cycle == 0 && j == 1 && freqIdx == startFrom
+			# Z2 = Z2*TEmat
+		# end
+		# mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(newDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
+		# obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 		
 		#println("At Start: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 		pMisTempFetched = map(fetch, pMisTemp)
@@ -365,16 +366,16 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		initialMis = mis
 		initialObj = obj
 		println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
-		for iters = 1:5
+		for iters = 1:1
 
 			#Print misfit at start
-			println("============================== New Z1-Z2 Iter ======================================");
+			
 
-			if norm(Z1)^2 < 1e-100
-				Z1 = zeros(ComplexF64, size(Z1))
-				Z2 = zeros(ComplexF64, size(Z2))
-				break
-			end
+			# if norm(Z1)^2 < 1e-100
+				# Z1 = zeros(ComplexF64, size(Z1))
+				# Z2 = zeros(ComplexF64, size(Z2))
+				# break
+			# end
 
 			Z1 = calculateZ1(misfitCalc2, nfreq, mergedWd ./ sqrt(newDim), mergedRcReduced, HinvPs, Z1, Z2, alpha1, stepReg);
 
@@ -384,8 +385,8 @@ for freqIdx = startFrom:(length(contDiv)-1)
 			println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2)
 			
 			# roll new TE matrix
-			TEmat = rand([-1,1],(nsrc,newDim));
-			mergedRcReduced = map(x -> x * TEmat, mergedRc);
+			# TEmat = rand([-1,1],(nsrc,newDim));
+			# mergedRcReduced = map(x -> x * TEmat, mergedRc);
 						
 			Z2 = calculateZ2(misfitCalc2, p, newDim, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd ./ sqrt(newDim), mergedRcReduced, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
 
@@ -497,7 +498,8 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		print("runtime of GN:"); println((e1 - t1)/1.0e9);
 
 		mc = map(x -> x > 4.2 ? 4.5 : x, mc)
-
+		
+		## TODO: extract these out of his. 
 		Dc,FafterGN, = computeMisfit(mc,pMisTE,false);
 		println("Computed Misfit with new sources after GN : ",FafterGN);
 

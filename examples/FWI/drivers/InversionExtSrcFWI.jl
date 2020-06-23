@@ -41,7 +41,6 @@ println(pwd())
 @everywhere FWIDriversPath = "./";
 include(string(FWIDriversPath,"prepareFWIDataFiles.jl"));
 include(string(FWIDriversPath,"setupFWI.jl"));
-# @everywhere include(string(FWIDriversPath,"remoteChangePmis.jl"));
 
 
 dataDir 	= pwd();
@@ -152,6 +151,9 @@ end
 # Setting up the inversion for slowness instead of velocity:
 ########################################################################################################
 function dump(mc,Dc,iter,pInv,PMis,resultsFilename)
+	if iter==0
+		return;
+	end
 	fullMc = slowSquaredToVelocity(reshape(Iact*pInv.modelfun(mc)[1] + sback,tuple((pInv.MInv.n)...)))[1];
 	Temp = splitext(resultsFilename);
 	if iter>0
