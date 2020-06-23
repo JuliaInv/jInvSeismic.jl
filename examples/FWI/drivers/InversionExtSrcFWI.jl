@@ -209,6 +209,41 @@ pInv = getInverseParam(Minv,modfun,regfun,alpha,mref[:],boundsLow,boundsHigh,
 dump(mref, 1, 0,  pInv, pMis, "mref.png")
 mc = copy(mref[:]);
 
+
+
+function saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc)
+	file = matopen(string(splitext(resultsFilename)[1],"_cyc",cyc,"_checkpoint.mat"), "w");
+	write(file,"mc",mc);
+	write(file,"Z1",Z1);
+	write(file,"Z2",Z2);
+	write(file,"alpha1",alpha1);
+	write(file,"alpha2",alpha2);
+	write(file,"alpha",pInv.alpha);
+	write(file,"mref",pInv.mref);
+	close(file);
+end
+
+function loadCheckpoint(resultsFilename,cyc)
+	file = matopen(string(splitext(resultsFilename)[1],"_cyc",cyc,"_checkpoint.mat"), "r");
+	mc = read(file,"mc");
+	Z1 = read(file,"Z1");
+	Z2 = read(file,"Z2");
+	alpha1 = read(file,"alpha1");
+	alpha2 = read(file,"alpha2");
+	alpha = read(file,"alpha");
+	mref = read(file,"mref");
+	close(file);
+	return mc,Z1,Z2,alpha1,alpha2,alpha,mref
+end
+
+
+
+
+
+
+
+
+
 ################ uncomment for regular FWI ##################
 
 # mc, = freqCont(mc, pInv, pMis,contDiv, 3,resultsFilename,dump,"",1,0,GN);
@@ -242,15 +277,34 @@ pInv.maxIter = 1;
 ############# uncomment for extended sources and simultaneous sources #########
 ts = time_ns();
 newDim = 25;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,5,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 5,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
+cyc = 0;
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,10,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 5,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,cyc,GN);
+
+saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
+mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
+
+
+cyc = 1;
 pInv.alpha *= 0.1;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,5,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 5,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,1,GN);
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 5,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,cyc,GN);
+
+
+saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
+mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
 
 regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
 pInv.regularizer = regfun;
 
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,5,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 5,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,2,GN);
+cyc = 2;
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 5,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,cyc,GN);
+
+
+saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
+mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
+
 te = time_ns();
+
+
 ####################################################################################
 
 
