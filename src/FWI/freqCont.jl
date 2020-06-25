@@ -305,6 +305,7 @@ for freqIdx = startFrom:endAtContDiv
 	end
 	FafterGN = 0.0;
 	F_zero_prev = 0.0;
+	mc_prev = convert(Array{Float16},mc);
 	for j = 1:itersNum
 		println("============================== New ALM Iter ======================================");
 		flush(Base.stdout)
