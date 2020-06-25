@@ -274,7 +274,8 @@ pInv.maxIter = 1;
 
 ############# uncomment for extended sources and simultaneous sources #########
 ts = time_ns();
-simSrcDim = 16;
+# simSrcDim = 16;
+simSrcDim = 1;
 windowSize = 4;
 updateMref = false;
 #####################################################################################################

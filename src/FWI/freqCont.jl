@@ -145,7 +145,6 @@ for k=1:numiter
 	nn = norm(b-A(x));
 	norms = [norms; nn];
 	beta = real(dot(z,r)) / beta;
-	#beta = 0.0;
 	p = z + beta*p;
 end
 return x,norms
@@ -248,6 +247,15 @@ function getMergedData(pMisTemp::Array{RemoteChannel}, nfreq, nsrc, nrcv, nwork,
 	return mergedDobs, mergedWd
 end
 
+function freqContExtendedSources(mc,Z1,Z2,itersNum::Int64,originalSources::SparseMatrixCSC,nrcv, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
+			resultsFilename::String,dumpFun::Function,Iact,mback,alpha1,alpha2Orig,
+			mode::String="",startFrom::Int64 = 1,endAtContDiv = (length(contDiv)-1),cycle::Int64=0,method::String="projGN",updateMref=false)
+	return freqContExtendedSourcesSS(mc,Z1,Z2,1,itersNum,originalSources,nrcv, sourcesSubInd, pInv::InverseParam, pMis,contDiv, windowSize,
+			resultsFilename,dumpFun,Iact,mback,alpha1,alpha2Orig,
+			mode,startFrom,endAtContDiv,cycle,method,updateMref);
+end
+
+
 function freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,itersNum::Int64,originalSources::SparseMatrixCSC,nrcv, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
 			resultsFilename::String,dumpFun::Function,Iact,mback,alpha1,alpha2Orig,
 			mode::String="",startFrom::Int64 = 1,endAtContDiv = (length(contDiv)-1),cycle::Int64=0,method::String="projGN",updateMref=false)
@@ -337,7 +345,6 @@ for freqIdx = startFrom:endAtContDiv
 				alpha1 = alpha1/5.0;
 				println("norm(mc_prev - mc)/norm(mc) is: ",t,", and < 0.001, hence increasing alphas by 1.5: ",alpha1,",",alpha2);
 			end
-				
 		end
 		mc_prev = convert(Array{Float16},mc);
 		
@@ -345,9 +352,12 @@ for freqIdx = startFrom:endAtContDiv
 		HinvPs = computeHinvTRec(pMisTemp[1:nwork:numOfCurrentProblems]);
 		e1 = time_ns();
 		print("runtime of HINVPs: "); println((e1 - t1)/1.0e9);
-
-		TEmat = rand([-1,1],(nsrc,simSrcDim));
-
+		
+		if simSrcDim==1
+			TEmat = Matrix(1.0I,nsrc,nsrc)
+		else
+			TEmat = rand([-1,1],(nsrc,simSrcDim));
+		end
 		mergedRc = Array{Array{ComplexF64}}(undef,nfreq); # Rc = Dc-Dobs, where Dc is the clean (wrt Z1,Z2) simulated data
 		for f = 1:nfreq
 			mergedRc[f] = zeros(ComplexF64,nrcv,nsrc);
@@ -362,7 +372,7 @@ for freqIdx = startFrom:endAtContDiv
 		mergedRcReduced = map(x-> x*TEmat, mergedRc)
 		
 		pMisTempFetched = map(fetch, pMisTemp)
-		prevObj = 0
+
 		
 		doFive = norm(Z2)==0.0;
 		
@@ -379,12 +389,6 @@ for freqIdx = startFrom:endAtContDiv
 		println("mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2, ", [Time: ",(e1 - t1)/1.0e9," sec]")
 		for iters = 1:(doFive ? 5 : 1)		
 
-			# if norm(Z1)^2 < 1e-100
-				# Z1 = zeros(ComplexF64, size(Z1))
-				# Z2 = zeros(ComplexF64, size(Z2))
-				# break
-			# end
-			
 			###################################################
 			#### COMPUTING Z1:
 			###################################################
@@ -396,10 +400,6 @@ for freqIdx = startFrom:endAtContDiv
 			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 			println("After Z1: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2, ", [Time: ",(e1 - t1)/1.0e9," sec]")
 			
-			# roll new TE matrix
-			# TEmat = rand([-1,1],(nsrc,simSrcDim));
-			# mergedRcReduced = map(x -> x * TEmat, mergedRc);
-			
 			###################################################
 			#### COMPUTING Z2:
 			###################################################
@@ -409,15 +409,6 @@ for freqIdx = startFrom:endAtContDiv
 			mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(simSrcDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
 			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 			println("After Z2: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2, ", [Time: ",(e1 - t1)/1.0e9," sec]")
-
-			# if abs(obj - prevObj) < 1e-3
-				# break
-			# end
-
-			# prevObj = obj
-			# if mis < 0.5 * initialMis
-				# break
-			# end
 		end
 
 		# get number of non zero elements
@@ -474,7 +465,7 @@ for freqIdx = startFrom:endAtContDiv
 
 		newSources = originalSources * TEmat + Z1 * Z2;
     	for k=1:length(newSrcInd)
-            	NewSourcesDivided[k] = newSources[:,newSrcInd[k]];
+            NewSourcesDivided[k] = newSources[:,newSrcInd[k]];
     	end
 
 		pMisTemp = setSources(pMisTemp,NewSourcesDivided);
@@ -499,7 +490,6 @@ for freqIdx = startFrom:endAtContDiv
 		end
 
 		pMisTE = pMisTemp;
-		# pInv.mref = mc[:];
 
 		flush(Base.stdout)
 		t1 = time_ns();
