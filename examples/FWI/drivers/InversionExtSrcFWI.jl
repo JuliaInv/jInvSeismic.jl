@@ -252,15 +252,13 @@ end
 
 #############################################################
 
-p = 25;
+
 N_nodes = prod(Minv.n.+1);
 nsrc = size(Q,2);
+p = 16;
 Z1 = 2e-4*rand(ComplexF64,(N_nodes, p));
 Z2 = zeros(ComplexF64, (p, nsrc)); #0.01*rand(ComplexF64, (p, nsrc)) .+ 0.01;
 pInv.maxIter = 1;
-
-
-
 
 ############# uncomment for extended sources only ####################
 # ts = time_ns();
@@ -276,31 +274,56 @@ pInv.maxIter = 1;
 
 ############# uncomment for extended sources and simultaneous sources #########
 ts = time_ns();
-newDim = 25;
-cyc = 0;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,10,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 5,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,cyc,GN);
-
+simSrcDim = 16;
+windowSize = 4;
+updateMref = false;
+#####################################################################################################
+cyc = 0;startFrom = 1;endAtContDiv = length(contDiv)-3;
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,5,Q,size(P,2)
+			,SourcesSubInd,pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
-mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
 
-
-cyc = 1;
-pInv.alpha *= 0.1;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 5,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,cyc,GN);
-
-
+#####################################################################################################
+endAtContDiv = length(contDiv)-1
+#####################################################################################################
+# mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
+cyc = 1;startFrom = windowSize;
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,5,Q,size(P,2)
+				,SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
-mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
 
-regfun(m,mref,M) 	= wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
+#####################################################################################################
+# mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
+cyc = 2;startFrom = windowSize;
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,5,Q,size(P,2)
+				,SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
+saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
+
+#####################################################################################################
+
+updateMref = true;
+regfun(m,mref,M) = wdiffusionReg(m,mref,M,Iact=Iact,C=[]);
 pInv.regularizer = regfun;
+#####################################################################################################
+# mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
 
-cyc = 2;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,newDim,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 5,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,cyc,GN);
-
-
+cyc = 3;startFrom = windowSize;
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,5,Q,size(P,2)
+				,SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
-mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
+#####################################################################################################
+
+newReg(m,mref,M) 	= wTVReg(m,mref,M,Iact=Iact,C=[]);
+pInv.regularizer = newReg;
+
+# mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
+cyc = 4;startFrom = windowSize;
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,10,Q,size(P,2)
+				,SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
+saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
+
+
+
 
 te = time_ns();
 

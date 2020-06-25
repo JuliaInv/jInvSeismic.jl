@@ -248,14 +248,14 @@ function getMergedData(pMisTemp::Array{RemoteChannel}, nfreq, nsrc, nrcv, nwork,
 	return mergedDobs, mergedWd
 end
 
-function freqContExtendedSourcesSS(mc,Z1,Z2,newDim,itersNum::Int64,originalSources::SparseMatrixCSC,nrcv, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
+function freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,itersNum::Int64,originalSources::SparseMatrixCSC,nrcv, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
 			resultsFilename::String,dumpFun::Function,Iact,mback,alpha1,alpha2Orig,
-			mode::String="",startFrom::Int64 = 1,cycle::Int64=0,method::String="projGN")
+			mode::String="",startFrom::Int64 = 1,endAtContDiv = (length(contDiv)-1),cycle::Int64=0,method::String="projGN",updateMref=false)
 Dc = 0;
 flag = -1;
 HIS = [];
 
-alpha2 = alpha2Orig / newDim;
+alpha2 = alpha2Orig / simSrcDim;
 
 N_nodes = prod(pInv.MInv.n .+ 1);
 nsrc = size(originalSources, 2);
@@ -268,16 +268,12 @@ p = size(Z1,2);
 nwork = nworkers()
 regfun = pInv.regularizer
 
-# return mc,Z1,Z2,alpha1,alpha2*newDim,Dc,flag,HIS;
+# return mc,Z1,Z2,alpha1,alpha2*simSrcDim,Dc,flag,HIS;
 
 
 
-for freqIdx = startFrom:(length(contDiv)-1)
-	if freqIdx == (length(contDiv)-1) && cycle == 2
-		pInv.mref = copy(mc[:]);
-		newReg(m,mref,M) 	= wTVReg(m,mref,M,Iact=Iact,C=[]);
-		pInv.regularizer = newReg;
-	elseif cycle == 2
+for freqIdx = startFrom:endAtContDiv
+	if updateMref
 		pInv.mref = copy(mc[:]);
 	end
 	if mode=="1stInit"
@@ -308,7 +304,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		OrininalSourcesDivided[k] = originalSources[:,currentSrcInd[k]];
 	end
 	FafterGN = 0.0;
-	
+	F_zero_prev = 0.0;
 	for j = 1:itersNum
 		println("============================== New ALM Iter ======================================");
 		flush(Base.stdout)
@@ -325,23 +321,31 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		println("Computed Misfit with orig sources : ",F_zero, " [Time: ",(e1 - t1)/1.0e9," sec]");
 		
 		if j>1
-			if FafterGN < F_zero*0.25
+			if FafterGN < F_zero*0.3
 				alpha2 = alpha2*1.5;
 				alpha1 = alpha1*1.5;
 				println("Ratio FafterGN/F_zero is: ",FafterGN/F_zero,", hence increasing alphas by 1.5: ",alpha1,",",alpha2);
-			elseif FafterGN > F_zero*0.75 
+			elseif FafterGN > F_zero*0.7 
 				alpha2 = alpha2/1.5;
 				alpha1 = alpha1/1.5;
 				println("Ratio FafterGN/F_zero is: ",FafterGN/F_zero,", hence decreasing alphas by 1.5: ",alpha1,",",alpha2);
 			end
+			t = norm(mc_prev - mc)/norm(mc);
+			if  t < 0.001
+				alpha2 = alpha2/5.0;
+				alpha1 = alpha1/5.0;
+				println("norm(mc_prev - mc)/norm(mc) is: ",t,", and < 0.001, hence increasing alphas by 1.5: ",alpha1,",",alpha2);
+			end
+				
 		end
+		mc_prev = convert(Array{Float16},mc);
 		
 		t1 = time_ns();
 		HinvPs = computeHinvTRec(pMisTemp[1:nwork:numOfCurrentProblems]);
 		e1 = time_ns();
 		print("runtime of HINVPs: "); println((e1 - t1)/1.0e9);
 
-		TEmat = rand([-1,1],(nsrc,newDim));
+		TEmat = rand([-1,1],(nsrc,simSrcDim));
 
 		mergedRc = Array{Array{ComplexF64}}(undef,nfreq); # Rc = Dc-Dobs, where Dc is the clean (wrt Z1,Z2) simulated data
 		for f = 1:nfreq
@@ -362,12 +366,12 @@ for freqIdx = startFrom:(length(contDiv)-1)
 		doFive = norm(Z2)==0.0;
 		
 		t1 = time_ns();
-		Z2 = calculateZ2(misfitCalc2, p, newDim, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd ./ sqrt(newDim), mergedRcReduced, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
+		Z2 = calculateZ2(misfitCalc2, p, simSrcDim, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd ./ sqrt(simSrcDim), mergedRcReduced, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
 		e1 = time_ns();
 		# print("runtime of calculateZ2: "); println((e1 - t1)/1.0e9);
 
 		print("After First Z2 update: ");
-		mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(newDim),mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
+		mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(simSrcDim),mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
 		obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 		initialMis = mis
 		initialObj = obj
@@ -384,24 +388,24 @@ for freqIdx = startFrom:(length(contDiv)-1)
 			#### COMPUTING Z1:
 			###################################################
 			t1 = time_ns();
-			Z1 = calculateZ1(misfitCalc2, nfreq, mergedWd ./ sqrt(newDim), mergedRcReduced, HinvPs, Z1, Z2, alpha1, stepReg);
+			Z1 = calculateZ1(misfitCalc2, nfreq, mergedWd ./ sqrt(simSrcDim), mergedRcReduced, HinvPs, Z1, Z2, alpha1, stepReg);
 			e1 = time_ns();
 			# print("runtime of calculateZ1: "); println((e1 - t1)/1.0e9);
-			mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(newDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
+			mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(simSrcDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
 			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 			println("After Z1: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2, ", [Time: ",(e1 - t1)/1.0e9," sec]")
 			
 			# roll new TE matrix
-			# TEmat = rand([-1,1],(nsrc,newDim));
+			# TEmat = rand([-1,1],(nsrc,simSrcDim));
 			# mergedRcReduced = map(x -> x * TEmat, mergedRc);
 			
 			###################################################
 			#### COMPUTING Z2:
 			###################################################
 			t1 = time_ns();
-			Z2 = calculateZ2(misfitCalc2, p, newDim, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd ./ sqrt(newDim), mergedRcReduced, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
+			Z2 = calculateZ2(misfitCalc2, p, simSrcDim, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd ./ sqrt(simSrcDim), mergedRcReduced, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
 			e1 = time_ns();
-			mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(newDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
+			mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(simSrcDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
 			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
 			println("After Z2: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2, ", [Time: ",(e1 - t1)/1.0e9," sec]")
 
@@ -438,7 +442,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 
 		# get new Wd - matrix filled with mean of old Wd
 		sizeWD = size(dobsTE[1])
-		wdTE = map(x-> mean(x)/sqrt(newDim) * ones(sizeWD), mergedWd);
+		wdTE = map(x-> mean(x)/sqrt(simSrcDim) * ones(sizeWD), mergedWd);
 
 
 		# new sources split indexes
@@ -546,7 +550,7 @@ for freqIdx = startFrom:(length(contDiv)-1)
 end
 
 pInv.regularizer = regfun;
-return mc,Z1,Z2,alpha1,alpha2*newDim,Dc,flag,HIS;
+return mc,Z1,Z2,alpha1,alpha2*simSrcDim,Dc,flag,HIS;
 end
 
 function freqContExtendedSources(mc,Z1,Z2,itersNum::Int64,originalSources::SparseMatrixCSC,nrcv, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
@@ -782,8 +786,8 @@ function calculateReducedMisfitParams(mc, currentProblems::UnitRange, pMis::Arra
 	numOfCurrentProblems = size(pMis, 1);
 	println("typeof Dc:", typeof(Dc))
 	eta = 20.0;
-	# newDim = 20;
-	newDim = size(TEmat, 2)
+	# simSrcDim = 20;
+	simSrcDim = size(TEmat, 2)
 	runningProcs = map(x->x.where, pMis);
 	pMisCurrent = map(fetch, pMis);
 	pForpCurrent =  map(x->x.pFor, pMisCurrent);
@@ -794,7 +798,7 @@ function calculateReducedMisfitParams(mc, currentProblems::UnitRange, pMis::Arra
 	DobsCurrent, WdCurrent = getMergedData(pMis, nfreq, nsrc, nrcv, nwork, currentSrcInd)
 	DobsNew = copy(DobsCurrent[:]);
 	nsrc = size(DobsNew[1],2);
-	# TEmat = rand([-1,1],(nsrc,newDim));
+	# TEmat = rand([-1,1],(nsrc,simSrcDim));
 	WdEta = eta.*WdCurrent;
 	# DpCurrent, = getData(vec(mc),pForpCurrent);
 	# Dc, = computeMisfit(mc,pMis,false);
@@ -808,7 +812,7 @@ function calculateReducedMisfitParams(mc, currentProblems::UnitRange, pMis::Arra
 			DobsNew[i][:,s] = 2 .* (A\DobsTemp[:,s]) + b;
 		end
 		DobsNew[i] = DobsNew[i][:,:] * TEmat;
-		WdNew[i] = 1.0./(sqrt(newDim) .* abs.(real.(DobsNew[i])) .+ 1e-1*mean(abs.(DobsNew[i])));
+		WdNew[i] = 1.0./(sqrt(simSrcDim) .* abs.(real.(DobsNew[i])) .+ 1e-1*mean(abs.(DobsNew[i])));
 	end
 
 	pForReduced = Array{RemoteChannel}(undef, numOfCurrentProblems);
