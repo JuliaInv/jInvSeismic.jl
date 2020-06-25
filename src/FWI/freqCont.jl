@@ -334,16 +334,16 @@ for freqIdx = startFrom:endAtContDiv
 				alpha2 = alpha2*1.5;
 				alpha1 = alpha1*1.5;
 				println("Ratio FafterGN/F_zero is: ",FafterGN/F_zero,", hence increasing alphas by 1.5: ",alpha1,",",alpha2);
-			elseif FafterGN > F_zero*0.7 
+			elseif FafterGN > F_zero*0.5 
 				alpha2 = alpha2/1.5;
 				alpha1 = alpha1/1.5;
 				println("Ratio FafterGN/F_zero is: ",FafterGN/F_zero,", hence decreasing alphas by 1.5: ",alpha1,",",alpha2);
 			end
 			t = norm(mc_prev - mc)/norm(mc);
-			if  t < 0.001
+			if  t < 0.005
 				alpha2 = alpha2/5.0;
 				alpha1 = alpha1/5.0;
-				println("norm(mc_prev - mc)/norm(mc) is: ",t,", and < 0.001, hence increasing alphas by 1.5: ",alpha1,",",alpha2);
+				println("Stagnation: norm(mc_prev - mc)/norm(mc) is: ",t,", and < 0.005, hence decreasing alphas by 5: ",alpha1,",",alpha2);
 			end
 		end
 		mc_prev = convert(Array{Float16},mc);
