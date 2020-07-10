@@ -132,16 +132,12 @@ end
 
 function MyPCG(A::Function,b::Array,x::Array,M::Array,numiter)
 r = b-A(x);
-println("r: ", r[30:40, 1])
 z = M.*r;
 p = copy(z);
 norms = [norm(r)];
 for k=1:numiter
 	Ap = A(p);
 	alpha = real(dot(z,r)/dot(p,Ap));
-	println("alpha: ", alpha)
-	println("p: ",p[30:40, 1])
-	println("alpha * p: ",(alpha * p)[30:40, 1])
 	x .+= alpha*p;
 	beta = real(dot(z,r));
 	r .-= alpha*Ap
@@ -405,7 +401,6 @@ for freqIdx = startFrom:endAtContDiv
 			t1 = time_ns();
 			Z1 = calculateZ1(A,misfitCalc2, nfreq, mergedWd ./ sqrt(simSrcDim), mergedRcReduced, HinvPs, Z1, Z2, alpha1, stepReg);
 			e1 = time_ns();
-			println("Z1: ", Z1[30:40, 1])
 			# print("runtime of calculateZ1: "); println((e1 - t1)/1.0e9);
 			mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(simSrcDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
 			obj = objectiveCalc2(A, Z1,Z2,mis,alpha1,alpha2);
