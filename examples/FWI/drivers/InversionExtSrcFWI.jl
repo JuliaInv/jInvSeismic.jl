@@ -11,12 +11,12 @@ using Statistics
 using jInv.InverseSolve
 using jInv.LinearSolvers
 
-# NumWorkers = 10;
- # if nworkers() == 1
- 	# addprocs(NumWorkers);
- # elseif nworkers() < NumWorkers
- 	# addprocs(NumWorkers - nworkers());
- # end
+NumWorkers = 10;
+ if nworkers() == 1
+ 	addprocs(NumWorkers);
+ elseif nworkers() < NumWorkers
+ 	addprocs(NumWorkers - nworkers());
+ end
 
 @everywhere begin
 	using jInv.InverseSolve
@@ -56,15 +56,15 @@ pad     = 30;
 jumpSrc = 5;
 newSize = [600,300];
 
-(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"../../SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"../../SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 #(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
-# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
+(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
 omega = [2.0,2.5,3.0,3.5,4.5,5.5,6.5]*2*pi; #SEG
 offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
 println("Offset is: ",offset," cells.")
 
 alpha1 = 1e-1;
-alpha2 = 1e1;
+alpha2 = 0.0;
 # stepReg = 1e4; #1e2;#4e+3
 
 ##################################################
@@ -105,14 +105,14 @@ println(string("The workers that we allocate for FWI are:",workersFWI));
 
 
 
-figure(1,figsize = (22,10));
-plotModel(m,includeMeshInfo=true,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="orig");
+# figure(1,figsize = (22,10));
+# plotModel(m,includeMeshInfo=true,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="orig");
+#
+# figure(2,figsize = (22,10));
+# plotModel(mref,includeMeshInfo=true,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="mref");
 
-figure(2,figsize = (22,10));
-plotModel(mref,includeMeshInfo=true,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="mref");
-
-#prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
-#									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+# prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
+# 									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 
@@ -146,6 +146,16 @@ end
 (Q,P,pMis,SourcesSubInd,contDiv,Iact,sback,mref,boundsHigh,boundsLow) =
 	setupFWI(m,dataFilenamePrefix,plotting,workersFWI,maxBatchSize,Ainv,SSDFun,useFilesForFields);
 
+
+
+A = zeros(size(Q))
+MeshShape = Tuple(Minv.n.+1)
+for j = 1:size(Q,2)
+	srcIndex = Tuple(findfirst(x->x.!=0, reshape(Q[:,j], MeshShape)))
+	for i = 1:size(Q,1)
+		A[i,j] = norm((((i - 1) % MeshShape[1]) + 1, floor((i-1) / MeshShape[1]) + 1) .- srcIndex)
+	end
+end
 
 ########################################################################################################
 # Setting up the inversion for slowness instead of velocity:
@@ -206,7 +216,7 @@ cgit 	= 5;
 pInv = getInverseParam(Minv,modfun,regfun,alpha,mref[:],boundsLow,boundsHigh,
                          maxStep=maxStep,pcgMaxIter=cgit,pcgTol=pcgTol,
 						 minUpdate=1e-3, maxIter = maxit,HesPrec=HesPrec);
-dump(mref, 1, 0,  pInv, pMis, "mref.png")
+# dump(mref, 1, 0,  pInv, pMis, "mref.png")
 mc = copy(mref[:]);
 
 
@@ -258,9 +268,13 @@ end
 
 N_nodes = prod(Minv.n.+1);
 nsrc = size(Q,2);
-p = 16;
-Z1 = 2e-4*rand(ComplexF64,(N_nodes, p));
-Z2 = zeros(ComplexF64, (p, nsrc)); #0.01*rand(ComplexF64, (p, nsrc)) .+ 0.01;
+p = nsrc;
+# Z1 = 2e-4*rand(ComplexF64,(N_nodes, p));
+Z1 = zeros(ComplexF64, (N_nodes,p))
+# Z1 = convert(Array{ComplexF64},Matrix(Q))
+# Z2 = zeros(ComplexF64, (p, nsrc)); #0.01*rand(ComplexF64, (p, nsrc)) .+ 0.01;
+Z2 = Matrix(I, (nsrc, nsrc))
+
 pInv.maxIter = 1;
 
 ############# uncomment for extended sources only ####################
@@ -277,13 +291,13 @@ pInv.maxIter = 1;
 
 ############# uncomment for extended sources and simultaneous sources #########
 ts = time_ns();
-simSrcDim = 16;
-# simSrcDim = 1;
+# simSrcDim = 16;
+simSrcDim = 1;
 windowSize = 4;
 updateMref = false;
 #####################################################################################################
 cyc = 0;startFrom = 1;endAtContDiv = length(contDiv)-3;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,10,Q,size(P,2),
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,A,Z1,Z2,simSrcDim,10,Q,size(P,2),
 				SourcesSubInd,pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
 
@@ -292,14 +306,14 @@ endAtContDiv = length(contDiv)-1
 #####################################################################################################
 # mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
 cyc = 1;startFrom = windowSize;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,10,Q,size(P,2),
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,A,Z1,Z2,simSrcDim,10,Q,size(P,2),
 				SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
 
 #####################################################################################################
 # mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
 cyc = 2;startFrom = windowSize;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,10,Q,size(P,2),
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,A,Z1,Z2,simSrcDim,10,Q,size(P,2),
 				SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
 
@@ -312,7 +326,7 @@ pInv.regularizer = regfun;
 # mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
 
 cyc = 3;startFrom = windowSize;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,10,Q,size(P,2),
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,A,Z1,Z2,simSrcDim,10,Q,size(P,2),
 				SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
 #####################################################################################################
@@ -322,7 +336,7 @@ pInv.regularizer = newReg;
 
 # mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
 cyc = 4;startFrom = windowSize;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,10,Q,size(P,2),
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,A,Z1,Z2,simSrcDim,10,Q,size(P,2),
 				SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
 
