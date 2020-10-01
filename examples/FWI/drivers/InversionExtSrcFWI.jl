@@ -260,10 +260,11 @@ N_nodes = prod(Minv.n.+1);
 nsrc = size(Q,2);
 p = 16;
 Z1 = 2e-4*rand(ComplexF64,(N_nodes, p));
-Z2 = zeros(ComplexF64, (p, nsrc)); #0.01*rand(ComplexF64, (p, nsrc)) .+ 0.01;
+# Z2 = zeros(ComplexF64, (p, nsrc)); #0.01*rand(ComplexF64, (p, nsrc)) .+ 0.01;
 pInv.maxIter = 1;
 
 ############# uncomment for extended sources only ####################
+# Z2 = zeros(ComplexF64, (p, nsrc));
 # ts = time_ns();
 # mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,7,Q,size(P,2),SourcesSubInd,pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",2,0,GN);
 # mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSources(mc,Z1,Z2,10,Q,size(P,2),SourcesSubInd, pInv, pMis,contDiv, 4,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",3,1,GN);
@@ -278,6 +279,7 @@ pInv.maxIter = 1;
 ############# uncomment for extended sources and simultaneous sources #########
 ts = time_ns();
 simSrcDim = 16;
+Z2 = 0.1*rand(ComplexF64, (p, simSrcDim)) .+ 0.01;
 # simSrcDim = 1;
 windowSize = 4;
 updateMref = false;
