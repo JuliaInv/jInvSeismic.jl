@@ -10,7 +10,6 @@ using Helmholtz
 using Statistics
 using jInv.InverseSolve
 using jInv.LinearSolvers
-using jInv.ForwardShare
 
 NumWorkers = 10;
  if nworkers() == 1
@@ -57,17 +56,15 @@ pad     = 30;
 jumpSrc = 5;
 newSize = [600,300];
 
-
 # (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"../../SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 #(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
 (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
-# omega = [2.0,2.5,3.0,3.5,4.5,5.5,6.5]*2*pi; #SEG
-omega = Array(3.0:0.3:6.0)*2*pi; #SEG UP
+omega = [2.0,2.5,3.0,3.5,4.5,5.5,6.5]*2*pi; #SEG
 offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
 println("Offset is: ",offset," cells.")
 
-alpha1 = 1e1;
-alpha2 = 1e1;
+alpha1 = 1e-1;
+alpha2 = 0.0;
 # stepReg = 1e4; #1e2;#4e+3
 
 ##################################################
@@ -114,8 +111,8 @@ println(string("The workers that we allocate for FWI are:",workersFWI));
 # figure(2,figsize = (22,10));
 # plotModel(mref,includeMeshInfo=true,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="mref");
 
-prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
-									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+# prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
+# 									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 
@@ -271,12 +268,12 @@ end
 
 N_nodes = prod(Minv.n.+1);
 nsrc = size(Q,2);
-p = 16;
+p = nsrc;
 # Z1 = 2e-4*rand(ComplexF64,(N_nodes, p));
 Z1 = zeros(ComplexF64, (N_nodes,p))
 # Z1 = convert(Array{ComplexF64},Matrix(Q))
-Z2 = 0.01*rand(ComplexF64, (p, nsrc)) .+ 0.01;
-# Z2 = Matrix(I, (nsrc, nsrc))
+# Z2 = zeros(ComplexF64, (p, nsrc)); #0.01*rand(ComplexF64, (p, nsrc)) .+ 0.01;
+Z2 = Matrix(I, (nsrc, nsrc))
 
 pInv.maxIter = 1;
 
@@ -294,7 +291,8 @@ pInv.maxIter = 1;
 
 ############# uncomment for extended sources and simultaneous sources #########
 ts = time_ns();
-simSrcDim = 16;
+# simSrcDim = 16;
+simSrcDim = 1;
 windowSize = 4;
 updateMref = false;
 #####################################################################################################
@@ -306,11 +304,16 @@ saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
 #####################################################################################################
 endAtContDiv = length(contDiv)-1
 #####################################################################################################
-pInv.alpha /= 100
-
 # mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
 cyc = 1;startFrom = windowSize;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,A,Z1,Z2,simSrcDim,15,Q,size(P,2),
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,A,Z1,Z2,simSrcDim,10,Q,size(P,2),
+				SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
+saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
+
+#####################################################################################################
+# mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
+cyc = 2;startFrom = windowSize;
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,A,Z1,Z2,simSrcDim,10,Q,size(P,2),
 				SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
 
@@ -322,8 +325,8 @@ pInv.regularizer = regfun;
 #####################################################################################################
 # mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
 
-cyc = 2;startFrom = windowSize;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,A,Z1,Z2,simSrcDim,20,Q,size(P,2),
+cyc = 3;startFrom = windowSize;
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,A,Z1,Z2,simSrcDim,10,Q,size(P,2),
 				SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
 #####################################################################################################
@@ -337,10 +340,15 @@ mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,A,Z1,Z2,simSrcDim,10,Q,si
 				SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
 
+
+
+
 te = time_ns();
 
 
 ####################################################################################
+
+
 
 println("runtime of inversion");
 println((ts - te)/1.0e9);

@@ -143,9 +143,6 @@ for k=1:numiter
 	r .-= alpha*Ap
 	z = M.*r
 	nn = norm(b-A(x));
-	if nn < 0.1 * res0 || nn < 1e-4
-		break
-	end
 	norms = [norms; nn];
 	beta = real(dot(z,r)) / beta;
 	p = z + beta*p;
@@ -223,9 +220,9 @@ function calculateZ1(A, misfitCalc::Function, nfreq::Integer, mergedWd::Array, m
 	# rhs .+= (stepReg) .* Z1
 
 	OP = x-> MultAll(A, mean.(real.(mergedWd)), HinvPs, x, Z1, Z2, alpha1, stepReg);
-	eps = 1.0
+	eps = 1e-2
 	# M = (abs.(Z1) .+ eps * maximum(abs.(Z1)));
-	M = 1 ./ ((A.^2) .+ eps)
+	M = 1 ./ (A .+ 1)
 	# M = ones(size(Z1))
 	t1=time_ns()
 	Z1, = MyPCG(OP,rhs,Z1,M,10);
@@ -240,7 +237,7 @@ function getMergedData(pMisTemp::Array{RemoteChannel}, nfreq, nsrc, nrcv, nwork,
 
 	mergedDobs = Array{Array{ComplexF64}}(undef,nfreq);
 	mergedWd = Array{Array{ComplexF64}}(undef,nfreq);
-
+	# mergedWd = zeros(ComplexF64,nfreq)
 	for f = 1:nfreq
 		mergedDobs[f] = zeros(nrcv,nsrc);
 		mergedWd[f] = zeros(nrcv,nsrc);
@@ -248,6 +245,9 @@ function getMergedData(pMisTemp::Array{RemoteChannel}, nfreq, nsrc, nrcv, nwork,
 		for l = 1:nwork
 			mergedDobs[f][:, currentSrcInd[l]] .= currentDobs[(f-1)*nwork+l]
 			mergedWd[f][:, currentSrcInd[l]] = currentWd[(f-1)*nwork+l]
+			# mergedWd[f] = mean(currentWd[f*(nwork-1)+l]);
+			# println(mergedWd[f],",",currentWd[f*(nwork-1)+l][20,1])
+			# println(size(currentWd[f*(nwork-1)+l]))
 		end
 	end
 	return mergedDobs, mergedWd
@@ -256,8 +256,7 @@ end
 function freqContExtendedSources(mc,Z1,Z2,itersNum::Int64,originalSources::SparseMatrixCSC,nrcv, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
 			resultsFilename::String,dumpFun::Function,Iact,mback,alpha1,alpha2Orig,
 			mode::String="",startFrom::Int64 = 1,endAtContDiv = (length(contDiv)-1),cycle::Int64=0,method::String="projGN",updateMref=false)
-	return freqContExtendedSourcesSS(mc,Z1,Z2,1,itersNum,originalSources,nrcv,
-			sourcesSubInd, pInv::InverseParam, pMis,contDiv, windowSize,
+	return freqContExtendedSourcesSS(mc,Z1,Z2,1,itersNum,originalSources,nrcv, sourcesSubInd, pInv::InverseParam, pMis,contDiv, windowSize,
 			resultsFilename,dumpFun,Iact,mback,alpha1,alpha2Orig,
 			mode,startFrom,endAtContDiv,cycle,method,updateMref);
 end
@@ -265,8 +264,7 @@ end
 
 function freqContExtendedSourcesSS(mc,A,Z1,Z2,simSrcDim,itersNum::Int64,originalSources::SparseMatrixCSC,nrcv, sourcesSubInd::Vector, pInv::InverseParam, pMis::Array{RemoteChannel},contDiv::Array{Int64}, windowSize::Int64,
 			resultsFilename::String,dumpFun::Function,Iact,mback,alpha1,alpha2Orig,
-			mode::String="",startFrom::Int64 = 1,endAtContDiv = (length(contDiv)-1),
-			cycle::Int64=0,method::String="projGN",updateMref=false)
+			mode::String="",startFrom::Int64 = 1,endAtContDiv = (length(contDiv)-1),cycle::Int64=0,method::String="projGN",updateMref=false)
 Dc = 0;
 flag = -1;
 HIS = [];
@@ -283,6 +281,10 @@ println("~~~~~~~~~~~~~~~  FreqCont: Regs are: ",alpha1,",",alpha2,",",stepReg);
 p = size(Z1,2);
 nwork = nworkers()
 regfun = pInv.regularizer
+
+# return mc,Z1,Z2,alpha1,alpha2*simSrcDim,Dc,flag,HIS;
+
+
 
 for freqIdx = startFrom:endAtContDiv
 	if updateMref
@@ -333,23 +335,23 @@ for freqIdx = startFrom:endAtContDiv
 
 		println("Computed Misfit with orig sources : ",F_zero, " [Time: ",(e1 - t1)/1.0e9," sec]");
 
-		# if j>1
-		# 	if FafterGN < F_zero*0.3
-		# 		alpha2 = alpha2*1.5;
-		# 		alpha1 = alpha1*1.5;
-		# 		println("Ratio FafterGN/F_zero is: ",FafterGN/F_zero,", hence increasing alphas by 1.5: ",alpha1,",",alpha2);
-		# 	elseif FafterGN > F_zero*0.5
-		# 		alpha2 = alpha2/1.5;
-		# 		alpha1 = alpha1/1.5;
-		# 		println("Ratio FafterGN/F_zero is: ",FafterGN/F_zero,", hence decreasing alphas by 1.5: ",alpha1,",",alpha2);
-		# 	end
-		# 	t = norm(mc_prev - mc)/norm(mc);
-		# 	if  t < 0.005
-		# 		alpha2 = alpha2/5.0;
-		# 		alpha1 = alpha1/5.0;
-		# 		println("Stagnation: norm(mc_prev - mc)/norm(mc) is: ",t,", and < 0.005, hence decreasing alphas by 5: ",alpha1,",",alpha2);
-		# 	end
-		# end
+		if j>1
+			if FafterGN < F_zero*0.3
+				alpha2 = alpha2*1.5;
+				alpha1 = alpha1*1.5;
+				println("Ratio FafterGN/F_zero is: ",FafterGN/F_zero,", hence increasing alphas by 1.5: ",alpha1,",",alpha2);
+			elseif FafterGN > F_zero*0.5
+				alpha2 = alpha2/1.5;
+				alpha1 = alpha1/1.5;
+				println("Ratio FafterGN/F_zero is: ",FafterGN/F_zero,", hence decreasing alphas by 1.5: ",alpha1,",",alpha2);
+			end
+			t = norm(mc_prev - mc)/norm(mc);
+			if  t < 0.005
+				alpha2 = alpha2/5.0;
+				alpha1 = alpha1/5.0;
+				println("Stagnation: norm(mc_prev - mc)/norm(mc) is: ",t,", and < 0.005, hence decreasing alphas by 5: ",alpha1,",",alpha2);
+			end
+		end
 		mc_prev = convert(Array{Float16},mc);
 
 		t1 = time_ns();
@@ -399,6 +401,7 @@ for freqIdx = startFrom:endAtContDiv
 			t1 = time_ns();
 			Z1 = calculateZ1(A,misfitCalc2, nfreq, mergedWd ./ sqrt(simSrcDim), mergedRcReduced, HinvPs, Z1, Z2, alpha1, stepReg);
 			e1 = time_ns();
+			# print("runtime of calculateZ1: "); println((e1 - t1)/1.0e9);
 			mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(simSrcDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
 			obj = objectiveCalc2(A, Z1,Z2,mis,alpha1,alpha2);
 			println("After Z1: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2, ", [Time: ",(e1 - t1)/1.0e9," sec]")
@@ -406,18 +409,12 @@ for freqIdx = startFrom:endAtContDiv
 			###################################################
 			#### COMPUTING Z2:
 			###################################################
-			t1 = time_ns();
-			Z2 = calculateZ2(misfitCalc2, p, simSrcDim, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd ./ sqrt(simSrcDim), mergedRcReduced, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
-			e1 = time_ns();
-			mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(simSrcDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
-			obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
-			println("After Z2: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2, ", [Time: ",(e1 - t1)/1.0e9," sec]")
-		end
-
-		if mis / F_zero < 0.8
-			# alpha2 = alpha2*1.5;
-			alpha1 = alpha1*2;
-			println("Ratio mis/F_zero is: ",FafterGN/F_zero,", hence increasing alpha1 by 2: ",alpha1,",",alpha2);
+			# t1 = time_ns();
+			# Z2 = calculateZ2(misfitCalc2, p, simSrcDim, nfreq, nrcv,nwork, numOfCurrentProblems, mergedWd ./ sqrt(simSrcDim), mergedRcReduced, HinvPs, pMisTempFetched, currentSrcInd, Z1, alpha2);
+			# e1 = time_ns();
+			# mis = misfitCalc2(Z1,Z2,mergedWd ./ sqrt(simSrcDim) ,mergedRcReduced,nfreq,alpha1,alpha2, HinvPs);
+			# obj = objectiveCalc2(Z1,Z2,mis,alpha1,alpha2);
+			# println("After Z2: mis: ",mis,", obj: ",obj,", norm Z2 = ", norm(Z2)^2," norm Z1: ", norm(Z1)^2, ", [Time: ",(e1 - t1)/1.0e9," sec]")
 		end
 
 		# get number of non zero elements
@@ -472,7 +469,8 @@ for freqIdx = startFrom:endAtContDiv
 			#NewWdDivided[k] = 1.0./(abs.(NewDobsDivided[k]) .+ 1e-1*mean(abs.(NewDobsDivided[k])));
 		end
 
-		newSources = originalSources * TEmat + Z1 * Z2;
+		# newSources = originalSources * TEmat + Z1 * Z2;
+		newSources = Z1;
     	for k=1:length(newSrcInd)
             NewSourcesDivided[k] = newSources[:,newSrcInd[k]];
     	end
