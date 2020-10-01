@@ -292,16 +292,11 @@ saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
 #####################################################################################################
 endAtContDiv = length(contDiv)-1
 #####################################################################################################
+pInv.alpha /= 100
+
 # mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
 cyc = 1;startFrom = windowSize;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,10,Q,size(P,2),
-				SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
-saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
-
-#####################################################################################################
-# mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
-cyc = 2;startFrom = windowSize;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,10,Q,size(P,2),
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,15,Q,size(P,2),
 				SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
 
@@ -313,8 +308,8 @@ pInv.regularizer = regfun;
 #####################################################################################################
 # mc,Z1,Z2,alpha1,alpha2,pInv.alpha,pInv.mref = loadCheckpoint(resultsFilename,cyc);
 
-cyc = 3;startFrom = windowSize;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,10,Q,size(P,2),
+cyc = 2;startFrom = windowSize;
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,20,Q,size(P,2),
 				SourcesSubInd, pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
 #####################################################################################################
