@@ -56,14 +56,14 @@ pad     = 30;
 jumpSrc = 5;
 newSize = [600,300];
 
-(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"../../SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
+# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"../../SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 #(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
-# (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
+(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
 omega = [2.0,2.5,3.0,3.5,4.5,5.5,6.5]*2*pi; #SEG
 offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
 println("Offset is: ",offset," cells.")
 
-alpha1 = 1e-1;
+alpha1 = 1e1;
 alpha2 = 1e1;
 # stepReg = 1e4; #1e2;#4e+3
 
