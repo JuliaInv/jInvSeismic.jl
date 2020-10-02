@@ -11,12 +11,12 @@ using Statistics
 using jInv.InverseSolve
 using jInv.LinearSolvers
 
-# NumWorkers = 10;
- # if nworkers() == 1
- 	# addprocs(NumWorkers);
- # elseif nworkers() < NumWorkers
- 	# addprocs(NumWorkers - nworkers());
- # end
+NumWorkers = 10;
+if nworkers() == 1
+	addprocs(NumWorkers);
+elseif nworkers() < NumWorkers
+ 	addprocs(NumWorkers - nworkers());
+end
 
 @everywhere begin
 	using jInv.InverseSolve
@@ -59,12 +59,13 @@ newSize = [600,300];
 # (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"../../SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 #(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_edges.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
 (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
-omega = [2.0,2.5,3.0,3.5,4.5,5.5,6.5]*2*pi; #SEG
+#omega = [2.0,2.5,3.0,3.5,4.5,5.5,6.5]*2*pi; #SEG
+omega = Array(3.0:0.3:6.0)*2*pi;
 offset  = newSize[1];  #ceil(Int64,(newSize[1]*(8.0/13.5)));
 println("Offset is: ",offset," cells.")
 
-alpha1 = 1e1;
-alpha2 = 1e1;
+alpha1 = 5e-1;
+alpha2 = 5e2;
 # stepReg = 1e4; #1e2;#4e+3
 
 ##################################################
@@ -111,8 +112,8 @@ plotModel(m,includeMeshInfo=true,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],fi
 figure(2,figsize = (22,10));
 plotModel(mref,includeMeshInfo=true,M_regular = Minv,cutPad=pad,limits=[1.5,4.5],figTitle="mref");
 
-#prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
-#									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
+prepareFWIDataFiles(m,Minv,mref,boundsHigh,boundsLow,dataFilenamePrefix,omega,ones(ComplexF64,size(omega)),
+									pad,ABLpad,jumpSrc,offset,workersFWI,maxBatchSize,Ainv,useFilesForFields);
 
 
 
@@ -280,12 +281,13 @@ pInv.maxIter = 1;
 ts = time_ns();
 simSrcDim = 16;
 Z2 = 0.1*rand(ComplexF64, (p, simSrcDim)) .+ 0.01;
-# simSrcDim = 1;
+#Z2 = 0.1*rand(ComplexF64, (p, nsrc)) .+ 0.01;
+#simSrcDim = 1;
 windowSize = 4;
 updateMref = false;
 #####################################################################################################
 cyc = 0;startFrom = 1;endAtContDiv = length(contDiv)-3;
-mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,10,Q,size(P,2),
+mc,Z1,Z2,alpha1,alpha2, = freqContExtendedSourcesSS(mc,Z1,Z2,simSrcDim,15,Q,size(P,2),
 				SourcesSubInd,pInv, pMis,contDiv, windowSize,resultsFilename,dump,Iact,sback,alpha1,alpha2,"",startFrom,endAtContDiv,cyc,GN,updateMref);
 saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc);
 
