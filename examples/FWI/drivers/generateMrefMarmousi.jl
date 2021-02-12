@@ -15,7 +15,6 @@ if dim==2
 	mref = getSimilarLinearModel(m,velBottom,velHigh);
 else
 	# 3D SEG slowness model
-	# modelFilename = 3Dseg256256128.mat
 	file = matopen(string(readModelFolder,"/",modelFilename)); DICT = read(file); close(file);
 	m = DICT["VELs"];
 	m = m*1e-3;
@@ -58,8 +57,6 @@ boundsHigh = convert(Array{Float32},boundsHigh);
 
 return (mPadded,MinvPadded,mrefPadded,boundsHigh,boundsLow);
 end
-
-
 
 
 dim     = 2;

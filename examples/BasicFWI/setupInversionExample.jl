@@ -47,11 +47,8 @@ omega = 2*pi*[2.0;2.5;3.5;4.5;6.0;]
 nfreq = length(omega)
 # generate sources
 q = zeros(tuple(n.+1...)); q[padx+1:4:end-padx-1,1] .= 1e4
-print(size(q))
 Q = sdiag(vec(q))
-print(size(Q))
 Q = Q[:,(LinearIndices(sum(Q,dims=2) .!= 0))[findall(sum(Q,dims=2) .!= 0)]]
-print(size(Q))
 nsrc = size(Q,2)
 # receivers
 p = zeros(tuple(n.+1...)); p[padx+1:end-padx-1,1] .= 1
