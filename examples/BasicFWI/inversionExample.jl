@@ -41,8 +41,6 @@ function startExample()
 
 	mc, Dc, pInv, Iact, mback, pMis = solveInverseProblemExtendedSources(pForp, Dobs, Wd, nfreq, nx, nz, mref,
 								Mr, 0.5, 0.035,"ES_FWI.dat", true, plotModelResult);
-	 # mc, Dc, pInv, Iact, mback = solveInverseProblemTraceEstimation(pForp, Dobs, Wd,
-	 # 	nfreq, nx, nz, mref, Mr, 0.5, 0.035, "TE_FWI.dat", true, plotModelResult);
 	# Show results
 	fullMc = reshape(Iact*pInv.modelfun(mc)[1] + mback,tuple((pInv.MInv.n)...));
 	println("Model error:");

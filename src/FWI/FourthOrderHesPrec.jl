@@ -49,7 +49,7 @@ function applySSORCGFourth(Hs::Function, d2R::SparseMatrixCSC,v::Vector,param)
 	d2R = wdiffusionReg(v,v,param.M,Iact = param.Iact, C = param.C)[3]
 	Dinv = param.omega./diag(d2R);
 	aux   = zeros(size(d2R,2));
-	SSOR(r) = (aux[:]=0.0; ssorPrecTrans!(d2R,aux,r,Dinv); return aux);
+	SSOR(r) = (aux[:].=0.0; ssorPrecTrans!(d2R,aux,r,Vector(Dinv)); return aux);
 	# println("In prec.")
 	# tic();
 	x = KrylovMethods.cg(d2R,v,tol=param.tol,maxIter=param.maxCGIter,M=SSOR,out=-1)[1]

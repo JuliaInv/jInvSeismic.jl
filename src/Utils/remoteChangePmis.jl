@@ -1,8 +1,8 @@
-export updateWd,multWd,setSources,setDobs,setWd
+export updateWd,multWd,setSources,setSourcesSame,setDobs,setWd
 function updateWd(pMis::Array{RemoteChannel},Dc::Array{RemoteChannel})
 @sync begin
-	@async begin
 		for k=1:length(pMis)
+	@async begin
 			pMis[k] = remotecall_fetch(updateWd,pMis[k].where,pMis[k],Dc[k]);
 		end
 	end
@@ -21,8 +21,8 @@ end
 
 function multWd(pMis::Array{RemoteChannel},beta::Float64)
 @sync begin
-	@async begin
 		for k=1:length(pMis)
+	@async begin
 			pMis[k] = remotecall_fetch(multWd,pMis[k].where,pMis[k],beta);
 		end
 	end
@@ -41,8 +41,8 @@ export setSources, setDobs
 
 function setWd(pMis::Array{RemoteChannel},newWd::Array)
 @sync begin
-	@async begin
 		for k=1:length(pMis)
+	@async begin
 			## TODO: make sure sources are replicated for different frequencies
 			pMis[k] = remotecall_fetch(setWd,pMis[k].where,pMis[k],newWd[k]);
 		end
@@ -59,8 +59,8 @@ return pMisRF;
 end
 function setDobs(pMis::Array{RemoteChannel},newDobs::Array)
 @sync begin
-	@async begin
 		for k=1:length(pMis)
+	@async begin
 			## TODO: make sure sources are replicated for different frequencies
 			pMis[k] = remotecall_fetch(setDobs,pMis[k].where,pMis[k],newDobs[k]);
 		end
@@ -76,10 +76,22 @@ put!(pMisRF,pMis)
 return pMisRF;
 end
 
-function setSources(pMis::Array{RemoteChannel},newSources::Array)
+function setSourcesSame(pMis::Array{RemoteChannel},newSources)
 @sync begin
-	@async begin
 		for k=1:length(pMis)
+	@async begin
+			## TODO: make sure sources are replicated for different frequencies
+			pMis[k] = remotecall_fetch(setSources,pMis[k].where,pMis[k],newSources);
+		end
+	end
+end
+return pMis;
+end
+
+function setSources(pMis::Array{RemoteChannel},newSources)
+@sync begin
+		for k=1:length(pMis)
+	@async begin
 			## TODO: make sure sources are replicated for different frequencies
 			pMis[k] = remotecall_fetch(setSources,pMis[k].where,pMis[k],newSources[k]);
 		end
@@ -100,8 +112,8 @@ export getWd
 function getWd(pMis::Array{RemoteChannel})
 Wd = Array{Array{ComplexF64}}(undef,length(pMis))
 @sync begin
-	@async begin
 		for k=1:length(pMis)
+	@async begin
 			Wd[k] = remotecall_fetch(getWd,pMis[k].where,pMis[k]);
 		end
 	end
@@ -118,8 +130,8 @@ export getDobs
 function getDobs(pMis::Array{RemoteChannel})
 Dobs = Array{Array{ComplexF64}}(undef,length(pMis))
 @sync begin
-	@async begin
 		for k=1:length(pMis)
+	@async begin
 			Dobs[k] = remotecall_fetch(getDobs,pMis[k].where,pMis[k]);
 		end
 	end

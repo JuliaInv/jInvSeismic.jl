@@ -64,11 +64,10 @@ end
 
 dim     = 2;
 pad     = 50;
-jumpSrc    = 10;
+jumpSrc    = 4;
+jumpRcv = 1
 offset  = 1000;
 domain = [0.0,9.192,0.0,2.904]; # without the pad for Marmousi 1
-# domain = [0.0,20.0,0.0,4.0]; # without the pad for Marmousi 2
 newSize = [550,200];
 modelDir = pwd();
-(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMrefMarmousi(modelDir,"./MarmousiModelWithoutPad.dat",dim,pad,domain,newSize,1.25,4.0); # for marmousi1
-#(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMrefMarmousi(modelDir,"examples/Marmousi2Vp.dat",dim,pad,domain,newSize,1.25,4.0); # for marmousi2
+(m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMrefMarmousi(modelDir,"examples/MarmousiModelWithoutPad.dat",dim,pad,domain,newSize,1.25,4.0);

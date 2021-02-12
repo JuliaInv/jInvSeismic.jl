@@ -175,7 +175,7 @@ for freqIdx = startFrom:nfreq
 		toMat(vec) = reshape(vec, tuple(mSizeMat...));
 
 		Wd = map(pm -> pm.Wd[:,:,1], pMisCurrent)
-		function misfitCalc2()
+		function misfitCalc()
 			sum = 0;
 			for i = 1:numOfCurrentProblems
 				sum += (mean(Wd[i])^2) .* norm(HinvPs[i]' * (pMisCurrent[i].pFor.Sources + Z1 * Z2) - pMisCurrent[i].dobs[:,:,1])^2;
@@ -185,10 +185,10 @@ for freqIdx = startFrom:nfreq
 			return sum;
 		end
 
-		Z2 = calculateZ2(misfitCalc2, p, nsrc, numOfCurrentProblems, Wd, HinvPs,
+		Z2 = calculateZ2(misfitCalc, p, nsrc, numOfCurrentProblems, Wd, HinvPs,
 			pMisCurrent, Z1, alpha);
 
-		println("misfit at Z2:: ", misfitCalc2())
+		println("misfit at Z2:: ", misfitCalc())
 
 		function multOP(R,HinvP)
 			return HinvP' * R * Z2;
@@ -221,7 +221,7 @@ for freqIdx = startFrom:nfreq
 			pMisCurrent[i].pFor.Sources += Z1 * Z2;
 		end
 
-		println("misfit at Z1:: ", misfitCalc2())
+		println("misfit at Z1:: ", misfitCalc())
 
 		Dc,F,dF,d2F,pMisNone,times,indDebit = computeMisfit(mc, pMisCurrent);
 
