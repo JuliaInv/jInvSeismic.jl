@@ -80,8 +80,8 @@ if chosenModel == SEG || chosenModel == UP
 	omega = [3.0,3.3,3.6,3.9,4.2,4.5,5.0,5.5,6.5]*2*pi;
 	offset  = newSize[1];
 	println("Offset is: ",offset," cells.")
-	alpha1 = 1e0;
-	alpha2 = 1e2;
+	alpha1 = 5e0;
+	alpha2 = 5e1;
 	stepReg = 5e1;
 	EScycles = 2;
 	cgit = 7;

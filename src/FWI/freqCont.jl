@@ -399,7 +399,7 @@ for j = 1:itersNum
 			println("Ratio mis/F_zero is: ",mis/F_zero,", hence decreasing alphas by 1.5: ",alpha1,",",alpha2);
 	end
 
-	if mis / F_zero < 0.15
+	if mis / F_zero < 0.3
 			alpha1 = alpha1*1.5;
 			alpha2 = alpha2*1.5;
 			println("Ratio mis/F_zero is: ",mis/F_zero,", hence increasing alpha1 by 1.5: ",alpha1,",",alpha2);
