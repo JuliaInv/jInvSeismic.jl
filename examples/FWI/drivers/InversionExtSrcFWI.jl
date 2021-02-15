@@ -45,87 +45,37 @@ dataDir 	= pwd();
 resultsDir 	= pwd();
 modelDir 	= pwd();
 
-@enum Model SEG MARMOUSI OVERTHRUST UP
-chosenModel = MARMOUSI # choose one of the above models
-
-@enum Method FWI FWI_ES FWI_ES_SS FWI_SS
-chosenMethod = FWI_ES_SS
-
-if chosenMethod == FWI || chosenMethod == FWI_ES
-	simSrcDim = 1;
-else
-	simSrcDim = 16;
-end
-
 ########################################################################################################
 windowSize = 4; # frequency continuation window size
+simSrcDim = 16; # change to 1 for no simultaneous sources
 maxBatchSize = 256; # use smaller value for 3D
 useFilesForFields = false; # wheter to save fields to files
 
-if chosenModel == SEG || chosenModel == UP
-	########## uncomment block for SEG ###############
-	 dim     = 2;
-	 pad     = 30;
-	 jumpSrc = 5;
-	 jumpRcv = 1;
-	 newSize = [600,300];
 
-	if chosenModel == SEG
-	 (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,
-	 	"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
-	else
-	 (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,
-	 	"examples/SEGmodel2D_up.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9, false);
-	end
-	omega = [3.0,3.3,3.6,3.9,4.2,4.5,5.0,5.5,6.5]*2*pi;
-	offset  = newSize[1];
-	println("Offset is: ",offset," cells.")
-	alpha1 = 5e0;
-	alpha2 = 5e1;
-	stepReg = 5e1;
-	EScycles = 2;
-	cgit = 7;
+########## uncomment block for SEG ###############
+ dim     = 2;
+ pad     = 30;
+ jumpSrc = 5;
+ jumpRcv = 1;
+ newSize = [600,300];
 
-	freqContSweeps = 5;
-	freqRanges = [(1,4), (1,4), (4,length(omega)), (4,length(omega)),
-			(length(omega), length(omega))];
-	regularizations = ["high", "high", "low", "low", "low"];
-	GNiters = [20, 20, 15 ,15, 100];
+ (m,Minv,mref,boundsHigh,boundsLow) = readModelAndGenerateMeshMref(modelDir,
+ 	"examples/SEGmodel2Dsalt.dat",dim,pad,[0.0,13.5,0.0,4.2],newSize,1.752,2.9);
 
-elseif chosenModel == MARMOUSI
-	include(string(FWIDriversPath,"generateMrefMarmousi.jl"));
-	omega = [3.0,3.5,4.0,4.5,5.0,5.5,6.5,7.5,8.5]*2*pi;
-	alpha1 = 1e0;
-	alpha2 = 1e2;
-	stepReg = 5e1;
-	EScycles = 1;
-	cgit = 5;
+omega = [3.0,3.3,3.6,3.9,4.2,4.5,5.0,5.5,6.5]*2*pi;
+offset  = newSize[1];
+println("Offset is: ",offset," cells.")
+alpha1 = 5e0;
+alpha2 = 5e1;
+stepReg = 5e1;
+EScycles = 2;
+cgit = 7;
 
-	freqContSweeps = 4;
-	freqRanges = [(1,4), (4,length(omega)), (4,length(omega)),
-			(length(omega), length(omega))];
-	regularizations = ["low", "low", "low", "low"];
-	GNiters = [10, 10, 10, 100];
-
-elseif chosenModel == OVERTHRUST
-	include(string(FWIDriversPath,"generateMrefOverthrust.jl"));
-	omega = [2.5,3.0,3.5,4.0,5.0]*2*pi;
-
-	alpha1 = 5e0;
-	alpha2 = 5e2;
-	stepReg = 5e1;
-	EScycles = 1;
-	cgit = 5;
-
-	freqContSweeps = 4;
-	freqRanges = [(1,3), (4,length(omega)), (4,length(omega)),
-			(length(omega), length(omega))];
-	regularizations = ["high", "low", "low", "low"];
-	GNiters = [10, 15, 15, 20];
-else
-	println("Wrong model chosen, driver shutting down");
-	exit(1);
-end
+freqContSweeps = 5;
+freqRanges = [(1,4), (1,4), (4,length(omega)), (4,length(omega)),
+		(length(omega), length(omega))];
+regularizations = ["high", "high", "low", "low", "low"];
+GNiters = [50, 50, 15 ,15, 100];
 
 # ###################################################################################################################
 dataFilenamePrefix = string(dataDir,"/DATA_",tuple((Minv.n)...));
@@ -137,25 +87,7 @@ resultsFilename = string(resultsFilename,".dat");
 
 println("omega*maximum(h): ",omega*maximum(Minv.h)*sqrt(maximum(1.0./(boundsLow.^2))));
 ABLpad = pad + 4;
-if chosenModel == OVERTHRUST
-	levels      = 3;
-	numCores 	= 16;
-	BLAS.set_num_threads(numCores);
-	maxIter     = 30;
-	relativeTol = 1e-6;
-	relaxType   = "Jac";
-	relaxParam  = 0.75;
-	relaxPre 	= 2;
-	relaxPost   = 2;
-	cycleType   ='W';
-	coarseSolveType = "Julia";
-	MG = getMGparam(ComplexF64,Int64,levels,numCores,maxIter,relativeTol,relaxType,relaxParam,relaxPre,relaxPost,cycleType,coarseSolveType,0.0,0.0);
-	shift = 0.2;
-	Hparam = HelmholtzParam(Minv,zeros(0),zeros(0),0.0,true,true);
-	Ainv = getShiftedLaplacianMultigridSolver(Hparam, MG,shift,"BiCGSTAB",0,true);
-else
-	Ainv  = getParallelJuliaSolver(ComplexF64,Int64,numCores=16,backend=3);
-end
+Ainv  = getParallelJuliaSolver(ComplexF64,Int64,numCores=16,backend=3);
 
 workersFWI = workers();
 println(string("The workers that we allocate for FWI are:",workersFWI));
@@ -229,13 +161,17 @@ end
 
 alpha 	= 1e+2;
 pcgTol 	= 1e-1;
-maxit 	= 10;
+maxit 	= 1;
 
 pInv = getInverseParam(Minv,modfun,regfunHigh,alpha,mref[:],boundsLow,boundsHigh,
                          maxStep=maxStep,pcgMaxIter=cgit,pcgTol=pcgTol,
 						 minUpdate=1e-3, maxIter = maxit,HesPrec=HesPrec);
 mc = copy(mref[:]);
 
+N_nodes = prod(Minv.n.+1);
+nsrc = size(Q,2);
+p = 16;
+Z1 = 2e-4*rand(ComplexF64,(N_nodes, p));
 
 function saveCheckpoint(resultsFilename,mc,Z1,Z2,alpha1,alpha2,pInv,cyc)
 	file = matopen(string(splitext(resultsFilename)[1],"_Cyc",cyc,"_checkpoint.mat"), "w");
@@ -265,18 +201,12 @@ function loadCheckpoint(resultsFilename,cyc)
 	return mc,Z1,Z2,alpha1,alpha2,alpha,mref
 end
 
-
-if chosenMethod == FWI || chosenMethod == FWI_SS
+if norm(Z1) == 0.0
 	# Standard FWI run
 	freqContParams = getFreqContParams(mc, 0, Q,size(P,2), pInv, pMis,
 			windowSize, resultsFilename,dump,Iact,sback,
 			simSrcDim = simSrcDim);
-
-elseif chosenMethod == FWI_ES_SS || chosenMethod == FWI_ES
-	N_nodes = prod(Minv.n.+1);
-	nsrc = size(Q,2);
-	p = 16;
-	Z1 = 2e-4*rand(ComplexF64,(N_nodes, p));
+else
 	freqContParams = getFreqContParams(mc, 0, Q,size(P,2), pInv, pMis,
 			windowSize, resultsFilename,dump,Iact,sback, Z1=Z1, alpha1=alpha1,
 			alpha2Orig=alpha2, stepReg=stepReg,
@@ -294,9 +224,11 @@ for i = 1:freqContSweeps
 	if regularizations[i] == "low"
 		freqContParams.pInv.regularizer = regfunLow;
 		freqContParams.updateMref = true;
+		freqContParams.pInv.pcgMaxIter = 5;
 	else
 		freqContParams.pInv.regularizer = regfunHigh;
 		freqContParams.updateMref = false;
+		freqContParams.pInv.pcgMaxIter = 7;
 	end
 	mc, = freqCont(freqContParams);
 	freqContParams.mc = mc;
