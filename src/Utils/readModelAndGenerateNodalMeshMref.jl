@@ -1,23 +1,19 @@
 
-export readModelAndGenerateMeshMref
+export readModelAndGenerateNodalMeshMref
 # 1.75 and 2.9 are the velocities that are suitable for the SEG salt model
 
-function readModelAndGenerateMeshMref(readModelFolder::String,modelFilename::String,dim::Int64,pad::Int64,domain::Vector{Float64},newSize::Vector=[],velBottom::Float64=1.75,velHigh::Float64=2.9,
-	doTranspose=true)
+function readModelAndGenerateNodalMeshMref(readModelFolder::String,modelFilename::String,dim::Int64,pad::Int64,domain::Vector{Float64},newSize::Vector=[],velBottom::Float64=1.75,velHigh::Float64=2.9)
 ########################## m,mref are in Velocity here. ###################################
 
 if dim==2
 	# SEGmodel2Deasy.dat
 	m = readdlm(string(readModelFolder,"/",modelFilename));
 	m = m*1e-3;
-	if doTranspose
-		m = Matrix(m');
-	else
-		m = Matrix(m);
-	end
+	m = Matrix(m');
 	mref = getSimilarLinearModel(m,velBottom,velHigh);
 else
 	# 3D SEG slowness model
+	# modelFilename = 3Dseg256256128.mat
 	file = matopen(string(readModelFolder,"/",modelFilename)); DICT = read(file); close(file);
 	m = DICT["VELs"];
 	m = m*1e-3;
@@ -31,14 +27,14 @@ if newSize!=[]
 	mref = expandModelNearest(mref,collect(size(mref)),newSize);
 end
 
-Minv = getRegularMesh(domain,collect(size(m)));
+Minv = getRegularMesh(domain,collect(size(m)).-1);
 
 
 (mPadded,MinvPadded) = addAbsorbingLayer(m,Minv,pad);
 (mrefPadded,MinvPadded) = addAbsorbingLayer(mref,Minv,pad);
 
 
-N = prod(MinvPadded.n);
+N = prod(MinvPadded.n.+1);
 boundsLow  = minimum(mPadded);
 boundsHigh = maximum(mPadded);
 

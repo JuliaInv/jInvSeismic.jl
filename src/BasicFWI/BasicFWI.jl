@@ -4,7 +4,8 @@ using jInv.Utils
 using Distributed
 using SparseArrays
 using LinearAlgebra
-
+using DelimitedFiles
+using Statistics
 
 export BasicFWIparam
 import jInv.ForwardShare.ForwardProbType
@@ -31,7 +32,11 @@ mutable struct BasicFWIparam <: ForwardProbType
     Receivers # Receivers
     Mesh      # Mesh
 	Fields    # Fields
+	# Helmholtz # Helmholtz operators
 	Ainv      # LU factorization
+	originalSources	  # sources before trace estimation
+	ExtendedSources
+	# HinvtPs
 end
 
 export getBasicFWIparam
@@ -70,7 +75,7 @@ function getBasicFWIparam(omega,gamma,Q,P,Mesh,doDistribute=false)
             end
         end
     else
-        pFor = BasicFWIparam(omega,gamma,Q,P,Mesh,[],[])
+        pFor = BasicFWIparam(omega,gamma,Q,P,Mesh,[],[],copy(Q),copy(Q))
     end
     return pFor
 end
@@ -78,8 +83,9 @@ end
 include("getData.jl")
 include("getSensMatVec.jl")
 include("getSensTMatVec.jl")
-include("getHelmholtzOperator.jl")
 include("getMassMatrix.jl")
+
+include("getHelmholtzOperator.jl")
 include("freqCont.jl")
 include("solvers.jl")
 

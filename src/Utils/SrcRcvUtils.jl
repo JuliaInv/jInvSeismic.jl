@@ -53,10 +53,8 @@ V = zeros(Float64,nSrcRcv);
 for k=1:nSrcRcv
 	J[k] = k;
 	if length(n_nodes)==2
-		#I[k] = sub2ind(tuple(n_nodes...),SrcRcvNodeLoc[k,2],SrcRcvNodeLoc[k,3]);
 		I[k] = loc2cs(SrcRcvNodeLoc[k,2],SrcRcvNodeLoc[k,3],n_nodes);
 	else
-		#I[k] = sub2ind(tuple(n_nodes...),SrcRcvNodeLoc[k,2],SrcRcvNodeLoc[k,3],SrcRcvNodeLoc[k,4]);
 		I[k] = loc2cs3D(SrcRcvNodeLoc[k,2],SrcRcvNodeLoc[k,3],SrcRcvNodeLoc[k,4],n_nodes)
 	end
 	V[k] = 1.0;
@@ -65,10 +63,10 @@ P = sparse(I,J,V,prod(n_nodes),nSrcRcv);
 end
 
 function readDataFileToDataMat(filename,SrcNodeLoc::Array{Int64},RcvNodeLoc::Array{Int64})
-# reads a data file into a data matrix D for the code to work with 
+# reads a data file into a data matrix D for the code to work with
 Data = readdlm(filename);
 # Data is a table of #src #rcv tau(src,rcv) Wd(src,rcv) and the rest is zero.
-# CellLocMap is a table of #src i j k 
+# CellLocMap is a table of #src i j k
 numSrc = size(SrcNodeLoc,1);
 numRcv = size(RcvNodeLoc,1);
 
@@ -82,7 +80,7 @@ if size(Data,2) == 4
 		rcvIdx = convert(Int64,round(Data[k,2]));
 		isrc = binarySearch(SrcIdxs,srcIdx);
 		ircv = binarySearch(RcvIdxs,rcvIdx);
-		D[ircv,isrc] = Data[k,3] ;#+ 1im*Data[k,4]; 
+		D[ircv,isrc] = Data[k,3] ;#+ 1im*Data[k,4];
 		Wd[ircv,isrc] = Data[k,4] ;#+ 1im*Data[k,5];
 	end
 elseif size(Data,2) == 6
@@ -95,7 +93,7 @@ elseif size(Data,2) == 6
 		rcvIdx = convert(Int64,round(Data[k,2]));
 		isrc = binarySearch(SrcIdxs,srcIdx);
 		ircv = binarySearch(RcvIdxs,rcvIdx);
-		D[ircv,isrc] = Data[k,3] + 1im*Data[k,5]; 
+		D[ircv,isrc] = Data[k,3] + 1im*Data[k,5];
 		Wd[ircv,isrc] = Data[k,4] + 1im*Data[k,6];
 	end
 
@@ -108,14 +106,14 @@ function binarySearch(arr, value)
     high = length(arr)
     while low <= high
         mid = round(Int,(low+high)/2)
-        if arr[mid] > value 
+        if arr[mid] > value
           high = mid-1
-        elseif arr[mid] < value 
+        elseif arr[mid] < value
           low = mid+1
-        else 
+        else
           return mid
         end
-    end     
+    end
     return -1
 end
 
@@ -126,7 +124,7 @@ Q = zeros(Bool, tuple(n_nodes...));
 
 if Msh.dim==2
 	Q[pad+1:jump:end-pad,1] .= true;
-else	
+else
 	Q[pad+1:jump:end-pad,pad+1:jump:end-pad,1] .= true;
 end
 numSrcRcv = round(Int,sum(Q));
@@ -137,7 +135,6 @@ SrcRcvIDs = sort(SrcRcvIDs[1:numSrcRcv]);
 SrcRcvTable[:,1] .= SrcRcvIDs;
 startLocations = Msh.domain[1:2:end];
 for k=1:numSrcRcv
-	#SrcRcvTable[k,2:end] = (collect(ind2sub(n_tup,Q[k])).-1).*Msh.h .+ startLocations;
 	SrcRcvTable[k,2:end] .= (cs2loc(Q[k],n_nodes).-1).*Msh.h .+ startLocations;
 end
 writedlm(filename,SrcRcvTable);
@@ -149,10 +146,10 @@ srcIDs = SrcNodeLoc[:,1];
 rcvIDs = RcvNodeLoc[:,1];
 
 if eltype(D)==Float64
-	println("Writing real data file");  
+	println("Writing real data file");
 	Data = zeros(Float32,count(!iszero, Wd),4);
 	k = 1;
-	for j = 1:size(D,2) 
+	for j = 1:size(D,2)
 		for i = 1:size(D,1)
 			if Wd[i,j] != 0.0
 				Data[k,1] = srcIDs[j];
@@ -167,7 +164,7 @@ else
 	println("Writing ``complex'' data file");
 	Data = zeros(Float32,count(!iszero, Wd),6);
 	k = 1;
-	for j = 1:size(D,2) 
+	for j = 1:size(D,2)
 		for i = 1:size(D,1)
 			if Wd[i,j] != 0.0
 				Data[k,1] = srcIDs[j];
@@ -191,7 +188,6 @@ for j = 1:size(Wd,2)
 	for i = 1:size(Wd,1)
 		rcvLoc = RcvNodeLoc[i,2:end];
 		dist = norm(srcLoc .- rcvLoc);
-		# dist = rcvLoc[1] - srcLoc[1];
 		if dist > offsetInNodes || dist < 2
 			Wd[i,j] = 0.0;
 		end
@@ -199,4 +195,3 @@ for j = 1:size(Wd,2)
 end
 return Wd;
 end
-

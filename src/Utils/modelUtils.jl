@@ -1,6 +1,10 @@
 export expandModelNearest, getSimilarLinearModel, addAbsorbingLayer
+export addAbsorbingLayer, smoothModel, smooth3
 export velocityToSlowSquared,slowSquaredToVelocity,velocityToSlow,slowToSlowSquared,slowSquaredToSlow
 export slowToLeveledSlowSquared,getModelInvNewton
+using Statistics
+using jInv.Mesh
+
 
 function slowToLeveledSlowSquared(s,mid::Float64 = 0.32,a::Float64 = 0.0,b::Float64 = 0.05)
 d = (b-a)./2.0;
@@ -96,17 +100,18 @@ end
 
 function getSimilarLinearModel(m::Array{Float64},mtop::Float64=0.0,mbottom::Float64=0.0)
 # m here is assumed to be a velocity model.
+
 if length(size(m))==2
 	(nx,nz) = size(m);
-	m_vel = copy(m) ; 
+	m_vel = copy(m) ;
 	if mtop==0.0
 		mtop = m_vel[1:10,5:6];
-		mtop = mean(mtop[:]);
+		mtop = Statistics.mean(mtop[:]);
 		println("Mref top = ",mtop);
 	end
 	if mbottom==0.0
 		mbottom = m_vel[1:10,end-10:end];
-		mbottom = mean(mbottom[:]);
+		mbottom = Statistics.mean(mbottom[:]);
 		println("Mref bottom = ",mbottom);
 	end
 	m_vel = ones(nx)*range(mtop,stop=mbottom,length=nz)';
@@ -116,11 +121,11 @@ elseif length(size(m))==3
 	m_vel = copy(m);
 	if mtop==0.0
 		mtop = m_vel[1:10,:,5:15];
-		mtop = mean(mtop[:]);
+		mtop = Statistics.mean(mtop[:]);
 	end
 	if mbottom==0.0
 		mbottom = m_vel[1:10,:,end-10:end];
-		mbottom = mean(mbottom[:]);	
+		mbottom = Statistics.mean(mbottom[:]);
 	end
 	lin = range(mtop,stop=mbottom,length=nz);
 	m_vel = copy(m);
@@ -157,14 +162,14 @@ Omega = Msh.domain;
 
 if length(size(m))==2
 	mnew = addAbsorbingLayer2D(m,pad);
-	MshNew = getRegularMesh([Omega[1],Omega[2] + 2*pad*Msh.h[1],Omega[3],Omega[4]+pad*Msh.h[2]],collect(size(mnew)).-1);
+	MshNew = getRegularMesh([Omega[1],Omega[2] + 2*pad*Msh.h[1],Omega[3],Omega[4]+pad*Msh.h[2]],Msh.n.+[2*pad,pad]);
 elseif length(size(m))==3
 	mnew = zeros(size(m,1)+2*pad,size(m,2)+2*pad,size(m,3)+pad);
 	mnew[pad+1:end-pad,pad+1:end-pad,1:end-pad] = m;
-	
+
 	extendedPlane1 = addAbsorbingLayer2D(reshape(m[1,:,:],size(m,2),size(m,3)),pad);
 	extendedPlaneEnd = addAbsorbingLayer2D(reshape(m[end,:,:],size(m,2),size(m,3)),pad);
-	
+
 	for k=1:pad
 		mnew[k,:,:] = extendedPlane1;
 		mnew[end-k+1,:,:] = extendedPlaneEnd;
@@ -175,8 +180,44 @@ elseif length(size(m))==3
 	for k=1:pad
 		mnew[:,:,end-pad+k] = t;
 	end
-	MshNew = getRegularMesh([Omega[1],Omega[2] + 2*pad*Msh.h[1],Omega[3],Omega[4] + 2*pad*Msh.h[2],Omega[5],Omega[6]+pad*Msh.h[2]],collect(size(mnew))-1);
+	MshNew = getRegularMesh([Omega[1],Omega[2] + 2*pad*Msh.h[1],Omega[3],Omega[4] + 2*pad*Msh.h[2],Omega[5],Omega[6]+pad*Msh.h[2]],Msh.n.+[2*pad,2*pad,pad]);
 end
 
 return mnew,MshNew;
+end
+
+
+
+function smoothModel(m,Mesh,times = 0)
+	ms = addAbsorbingLayer2D(m,times);
+	for k=1:times
+		for j = 2:size(ms,2)-1
+			for i = 2:size(ms,1)-1
+				@inbounds ms[i,j] = (2*ms[i,j] + (ms[i-1,j-1]+ms[i-1,j]+ms[i-1,j+1]+ms[i,j-1]+ms[i,j+1]+ms[i+1,j-1]+ms[i+1,j]+ms[i,j+1]))/10.0;
+			end
+		end
+	end
+	return ms[(times+1):(end-times),1:end-times];
+end
+
+function smooth3(m,Mesh,times = 0)
+	pad = 50
+	println("Smoothing ", times," times");
+	ms, = addAbsorbingLayer(m, Mesh, pad)
+	for k=1:times
+		for l = 2:size(ms,3)-1
+			for j = 2:size(ms,2)-1
+				for i = 2:size(ms,1)-1
+					@inbounds ms[i,j,l] = (2*ms[i,j,l] +
+					(ms[i,j,l+1] + ms[i,j,l-1] + ms[i,j-1,l] + ms[i,j-1,l-1] + ms[i,j-1,l+1] + ms[i,j+1,l] + ms[i,j+1,l-1] + ms[i,j+1,l+1] +
+					ms[i-1,j,l] + ms[i-1,j,l+1] + ms[i-1,j,l-1] + ms[i-1,j-1,l] + ms[i-1,j-1,l-1] + ms[i-1,j-1,l+1] + ms[i-1,j+1,l] + ms[i-1,j+1,l-1] + ms[i-1,j+1,l+1] +
+					ms[i+1,j,l] + ms[i+1,j,l+1] + ms[i+1,j,l-1] + ms[i+1,j-1,l] +
+					 ms[i+1,j-1,l-1] + ms[i+1,j-1,l+1] + ms[i+1,j+1,l] + ms[i+1,j+1,l-1] + ms[i+1,j+1,l+1]))/28.0;
+				end
+			end
+		end
+
+
+	end
+	return ms[(pad+1):(end-pad),(pad+1):(end-pad),1:end-pad];
 end

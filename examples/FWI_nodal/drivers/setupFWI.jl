@@ -1,11 +1,11 @@
 using SparseArrays
 using LinearAlgebra
 
-function setupFWI(m,filenamePrefix::String,plotting::Bool,
+function setupFWI(m,filenamePrefix::String,resultsOutputFolderAndPrefix::String,plotting::Bool,
 		workersFWI::Array{Int64,1}=workers(),maxBatchSize::Int64 = 48,
-		Ainv::AbstractSolver = getJuliaSolver(), misfun::Function=SSDFun,useFilesForFields::Bool = false,useFreqOnlySplit::Bool = true)
+		Ainv::AbstractSolver = getJuliaSolver(), misfun::Function=SSDFun,useFilesForFields::Bool = false)
 
-
+		
 file = matopen(string(filenamePrefix,"_PARAM.mat"));
 n_cells = read(file,"n");
 OmegaDomain = read(file,"domain");
@@ -20,9 +20,10 @@ end
 
 boundsLow = read(file,"boundsLow");
 boundsHigh = read(file,"boundsHigh");
-
 mref =  read(file,"mref");
 close(file);
+
+resultsFilename = string(resultsOutputFolderAndPrefix,tuple((Minv.n.+1)...),".dat");
 
 
 ### Read receivers and sources files
@@ -42,7 +43,7 @@ P = generateSrcRcvProjOperators(Minv.n.+1,rcvNodeMap);
 ##### Set up remote workers ############################################################################
 ########################################################################################################
 
-N = prod(Minv.n);
+N = prod(Minv.n.+1);
 
 Iact = SparseMatrixCSC(1.0I, N, N);
 mback   = zeros(Float64,N);
@@ -60,33 +61,26 @@ boundsLow = Iact'*boundsLow;
 boundsHigh = Iact'*boundsHigh;
 mref = Iact'*mref[:];
 
+misfun = SSDFun;
+
 ####################################################################################################################
 ####################################################################################################################
 
 println("Reading FWI data:");
 
 batch = min(size(Q,2),maxBatchSize);
-if useFreqOnlySplit
-	(pForFWI,contDivFWI,SourcesSubIndFWI) = getFWIparamFreqOnlySplit(omega,waveCoef,vec(gamma),Q,P,Minv,Ainv,workersFWI,batch,useFilesForFields);
-else
-	(pForFWI,contDivFWI,SourcesSubIndFWI) = getFWIparam(omega,waveCoef,vec(gamma),Q,P,Minv,Ainv,workersFWI,batch,useFilesForFields);
-end
+(pForFWI,contDivFWI,SourcesSubIndFWI) = getFWIparam(omega,waveCoef,vec(gamma),Q,P,Minv,Ainv,workersFWI,batch,useFilesForFields);
+
 # write data to remote workers
 Wd   = Array{Array{ComplexF64,2}}(undef,length(pForFWI))
 dobs = Array{Array{ComplexF64,2}}(undef,length(pForFWI))
 for k = 1:length(omega)
 	omRound = string(round((omega[k]/(2*pi))*100.0)/100.0);
 	(DobsFWIwk,WdFWIwk) =  readDataFileToDataMat(string(filenamePrefix,"_freq",omRound,".dat"),srcNodeMap,rcvNodeMap);
-
-	if useFreqOnlySplit
-		Wd[k] = WdFWIwk
-		dobs[k] = DobsFWIwk
-	else
-		for i = contDivFWI[k]:contDivFWI[k+1]-1
-			I_i = SourcesSubIndFWI[i]; # subset of sources for ith worker.
-			Wd[i] 	= WdFWIwk[:,I_i];
-			dobs[i] = DobsFWIwk[:,I_i];
-		end
+	for i = contDivFWI[k]:contDivFWI[k+1]-1
+		I_i = SourcesSubIndFWI[i]; # subset of sources for ith worker.
+		Wd[i] 	= WdFWIwk[:,I_i];
+		dobs[i] = DobsFWIwk[:,I_i];
 	end
 	DobsFWIwk = 0;
 	WdFWIwk = 0;
